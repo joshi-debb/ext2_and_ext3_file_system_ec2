@@ -815,7 +815,7 @@ func (disk Disk) LeerMMR(paths string) {
 var List_mount []Mount
 var aumento int = 1
 
-func (disk Disk) MOUNT(tks []string) {
+func (disk Disk) Mount(tks []string) {
 
 	paths := ""
 	name := ""
@@ -849,11 +849,17 @@ func (disk Disk) MOUNT(tks []string) {
 
 	namedisk := strings.Replace(path.Base(paths), ".dsk", "", -1)
 
+	fmt.Println("namedisk: ", namedisk)
+	fmt.Println("name: ", name)
+	fmt.Println("path: ", paths)
+
 	var Disco Mbr
 	file, _ := os.Open(paths)
 	defer file.Close()
 	file.Seek(0, 0)
 	binary.Read(file, binary.LittleEndian, &Disco)
+
+	fmt.Println(Disco.MBR_size, Disco.MBR_fit, Disco.MBR_time, Disco.MBR_asigndisk)
 
 	var partitions [4]Partition
 	partitions[0] = Disco.MBR_Part_1
@@ -863,12 +869,23 @@ func (disk Disk) MOUNT(tks []string) {
 	encontrado_P := false
 
 	for _, buscadoPart := range partitions {
+
 		if buscadoPart.PART_type == 'p' {
 			var bytes [16]byte
 			copy(bytes[:], []byte(name))
 			if buscadoPart.PART_name == bytes {
 				encontrado_P = true
 				break
+			}
+		} else if buscadoPart.PART_type == 'e' {
+			var ebrs []EBR = disk.getlogics(buscadoPart, paths)
+			for _, buscadoLog := range ebrs {
+				var bytes [16]byte
+				copy(bytes[:], []byte(name))
+				if buscadoLog.EBR_name == bytes {
+					encontrado_P = true
+					break
+				}
 			}
 		}
 	}
@@ -946,7 +963,39 @@ func (disk Disk) verVector() {
 	}
 }
 
-func (disk Disk) MKFS(types string, id string) {
+func (disk Disk) Mkfs(tks []string) {
+
+	types := ""
+	id := ""
+
+	//extraer parametros
+	for _, token := range tks {
+		tk := token[:strings.Index(token, "=")]
+		token = token[len(tk)+1:]
+		if strings.ToLower(tk) == "type" {
+			//si trae comillas extraerlas
+			if strings.HasPrefix(token, "\"") {
+				types = token[1 : len(token)-1]
+			} else {
+				types = token
+			}
+			if strings.ToLower(types) != "full" {
+				fmt.Println("El parametro type no es valido")
+				return
+			}
+
+		} else if strings.ToLower(tk) == "id" {
+			//si trae comillas extraerlas
+			if strings.HasPrefix(token, "\"") {
+				id = token[1 : len(token)-1]
+			} else {
+				id = token
+			}
+		} else {
+			fmt.Println("No se esperaba el parametro: ", tk)
+			break
+		}
+	}
 
 	if types == "full" {
 		fmt.Println("se realizara un formateo completo")
@@ -957,6 +1006,21 @@ func (disk Disk) MKFS(types string, id string) {
 	if err != nil {
 		fmt.Println("NO HAY DISCOS MONTADOS")
 		return
+	}
+
+	if disk.EstaFormateado(particion, paths) {
+		fmt.Println("YA ESTA FORMATEADO")
+		for {
+			fmt.Println("Desea formatear de nuevo? s/n")
+			var respuesta string
+			fmt.Scanln(&respuesta)
+			if respuesta == "s" || respuesta == "S" {
+				break
+			}
+			if respuesta == "n" || respuesta == "N" {
+				return
+			}
+		}
 	}
 
 	ext2 := (particion.PART_size - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inodes{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
@@ -1090,4 +1154,16 @@ func (disk Disk) EncontrarParticion(id string, p *string) (Partition, error) {
 	file.Seek(0, 0)
 	binary.Read(file, binary.LittleEndian, &mbr)
 	return disk.findby(mbr, nombreParticion, paths)
+}
+
+func (disk Disk) EstaFormateado(partition Partition, paths string) bool {
+	var super Superblock = NewSuperblock()
+	file, _ := os.OpenFile(paths, os.O_RDWR, 0666)
+	defer file.Close()
+	file.Seek(0, 0)
+	file.Seek(int64(partition.PART_start), 0)
+	binary.Read(file, binary.LittleEndian, &super)
+
+	return super.S_filesystem_type == int32(2)
+
 }

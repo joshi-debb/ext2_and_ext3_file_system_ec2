@@ -37,6 +37,11 @@ func Search(tk string, tks []string) {
 		disk.Rmdisk(tks)
 	case "fdisk":
 		disk.Fdisk(tks)
+	case "mount":
+		disk.Mount(tks)
+	case "mkfs":
+		disk.Mkfs(tks)
+
 	default:
 		fmt.Println("Comando no encontrado")
 	}

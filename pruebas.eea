@@ -1,12 +1,19 @@
-mkdisk >size=5 >unit=M >path=/home/why/Desktop/pruebas/Disco1.dsk
+mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco1.dsk
+
+mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco2.dsk
+
 
 pause
-fdisk >type=E >path=/home/why/Desktop/pruebas/Disco1.dsk >unit=M >name=Particion1 >size=1
-fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion2 >size=1
-fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion3 >size=1
-fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion4 >size=1
-fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion5 >size=1
-fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion6 >size=1
+fdisk >type=E >path=/home/why/Desktop/Disco1.dsk >unit=M >name=Particion1 >size=1
+fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion2 >size=1
+fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion3 >size=1
+fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion4 >size=1
+
+fdisk >type=E >path=/home/why/Desktop/Disco2.dsk >unit=M >name=Particion1 >size=1
+fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion2 >size=1
+fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion3 >size=1
+fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion4 >size=1
+
 
 
 pause
@@ -15,18 +22,25 @@ fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl2 >unit=K >size=200 
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl3 >unit=K >size=200 >fit=bf
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl4 >unit=K >size=200 >fit=bf
 
+fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl1 >unit=K >size=200 >fit=bf
+fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl2 >unit=K >size=200 >fit=bf
+fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl3 >unit=K >size=200 >fit=bf
+fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl4 >unit=K >size=200 >fit=bf
+
 
 pause
+mount >path=/home/why/Desktop/Disco1.dsk >name=Partl1
 mount >path=/home/why/Desktop/Disco1.dsk >name=Particion2
 
 pause
-mount >path=/home/why/Desktop/Disco1.dsk >name=Particion3
+mount >path=/home/why/Desktop/Disco2.dsk >name=Particion2
+mount >path=/home/why/Desktop/Disco2.dsk >name=Partl1
 
 pause
 mount
 
 pause
-mkfs >type="fast" >id=531Disco1 >fs=3fs
+mkfs >type="full" >id=531a
 
 pause
 login >user=root >pass=123 >id=531Disco1
