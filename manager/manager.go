@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var disk Disk
+
 func Cmd() {
 
 	for {
@@ -30,10 +32,11 @@ func Cmd() {
 func Search(tk string, tks []string) {
 	switch strings.ToLower(tk) {
 	case "mkdisk":
-		Mkdisk(tks)
+		disk.Mkdisk(tks)
 	case "rmdisk":
-		Rmdisk(tks)
-
+		disk.Rmdisk(tks)
+	case "fdisk":
+		disk.Fdisk(tks)
 	default:
 		fmt.Println("Comando no encontrado")
 	}
@@ -71,11 +74,20 @@ func SplitTokens(txt string) []string {
 				continue
 			} else if state == 4 && caracter == ' ' {
 				state = 0
-				tokens = append(tokens, token)
+				character := ""
+
+				for i := 0; i < len(token); i++ {
+					if token[i] != 10 {
+						character += string(token[i])
+					}
+				}
+				tokens = append(tokens, character)
 				token = ""
 				continue
 			}
+
 			token += string(caracter)
+
 		}
 	}
 

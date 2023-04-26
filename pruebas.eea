@@ -1,10 +1,13 @@
-mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco1.dsk
+mkdisk >size=5 >unit=M >path=/home/why/Desktop/pruebas/Disco1.dsk
 
 pause
-fdisk >type=E >path=/home/why/Desktop/Disco1.dsk >unit=M >name=Particion1 >size=1
-fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion2 >size=1
-fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion3 >size=1
-fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion4 >size=1
+fdisk >type=E >path=/home/why/Desktop/pruebas/Disco1.dsk >unit=M >name=Particion1 >size=1
+fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion2 >size=1
+fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion3 >size=1
+fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion4 >size=1
+fdisk >path=/home/why/Desktop/pruebas/Disco1.dsk >type=P >unit=M >name=Particion5 >size=1
+fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion6 >size=1
+
 
 pause
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl1 >unit=K >size=200 >fit=bf
