@@ -1,38 +1,77 @@
 package manager
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
-	"os"
+	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 var disk Disk
+var user User
+
+type Comand struct {
+	Parametro string `json:"comando"`
+}
 
 func Cmd() {
 
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("[MIA]-Terminal:~$ ")
-		cadena, err := reader.ReadString('\n')
+	router := mux.NewRouter()
+	enableCORS(router)
+
+	router.HandleFunc("/Comands", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var comando Comand
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&comando)
 		if err != nil {
-			fmt.Println("Ocurrió un error:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		tk := Token(cadena)
-		tokens := SplitTokens(cadena)
+		tk := Token(comando.Parametro)
+		tokens := SplitTokens(comando.Parametro)
 
-		Search(tk, tokens)
+		Search(tk, tokens, w, r)
 
-	}
+	}).Methods("POST")
+
+	http.ListenAndServe(":8080", router)
+}
+
+func enableCORS(router *mux.Router) {
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}).Methods(http.MethodOptions)
+	router.Use(middlewareCors)
+}
+
+func middlewareCors(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization,Access-Control-Allow-Origin")
+			w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
+			next.ServeHTTP(w, req)
+		})
 }
 
 // función para buscar comando
-func Search(tk string, tks []string) {
+func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) {
 	switch strings.ToLower(tk) {
 	case "mkdisk":
-		disk.Mkdisk(tks)
+		hola := disk.Mkdisk(tks)
+		respuesta := Comand{
+			Parametro: hola,
+		}
+		jsonBytes, _ := json.Marshal(respuesta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBytes)
 	case "rmdisk":
 		disk.Rmdisk(tks)
 	case "fdisk":
@@ -41,6 +80,8 @@ func Search(tk string, tks []string) {
 		disk.Mount(tks)
 	case "mkfs":
 		disk.Mkfs(tks)
+	case "login":
+		user.Login(tks, disk)
 
 	default:
 		fmt.Println("Comando no encontrado")

@@ -43,12 +43,12 @@ pause
 mkfs >type="full" >id=531a
 
 pause
-login >user=root >pass=123 >id=531Disco1
+login >user=root >pwd=123 >id=531a
 
 Logout
 
 pause
-login >user=root >pass=123 >id=531Disco1
+login >user=root >pwd=123 >id=531a
 
 pause
 mkgrp >name=usuarios

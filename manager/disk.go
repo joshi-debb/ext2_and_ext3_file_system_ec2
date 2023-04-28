@@ -68,6 +68,7 @@ func NewEBR() EBR {
 }
 
 type Mount_id struct {
+	NameP    string
 	Id       string
 	Namedisk string
 	No       int
@@ -87,8 +88,8 @@ type Transition struct {
 	after     int32
 }
 
-func (m *Mount) AddId(id string, namedisk string, no int) {
-	m.ids = append(m.ids, Mount_id{Id: id, Namedisk: namedisk, No: no})
+func (m *Mount) AddId(id string, namedisk string, no int, namep string) {
+	m.ids = append(m.ids, Mount_id{Id: id, Namedisk: namedisk, No: no, NameP: namep})
 }
 
 type Inodes struct {
@@ -176,7 +177,7 @@ type Fileblock struct {
 	B_content [64]byte
 }
 
-func (disk Disk) Mkdisk(tks []string) {
+func (disk Disk) Mkdisk(tks []string) string {
 	//inicializar variables
 	size := 0
 	paths := ""
@@ -192,20 +193,19 @@ func (disk Disk) Mkdisk(tks []string) {
 			if strings.ToLower(token) == "bf" || strings.ToLower(token) == "ff" || strings.ToLower(token) == "wf" {
 				fit = strings.ToLower(token)
 			} else {
-				fmt.Println("Parametro fit no valido")
+				return "Parametro fit no valido"
 			}
 		} else if strings.ToLower(tk) == "unit" {
 			if strings.ToLower(token) == "k" || strings.ToLower(token) == "m" {
 				unit = strings.ToLower(token)
 			} else {
-				fmt.Println("Parametro unit no valido")
+				return "Parametro unit no valido"
 			}
 		} else if strings.ToLower(tk) == "size" {
 
 			sizes, err := strconv.Atoi(token)
 			if err != nil || sizes <= 0 {
-				fmt.Println("Parametro size no valido")
-				return
+				return "Parametro size no valido"
 			}
 			size = sizes
 
@@ -226,16 +226,12 @@ func (disk Disk) Mkdisk(tks []string) {
 					break
 				}
 			}
-		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
 		}
 	}
 
 	if FileExist(paths) {
-		fmt.Println("El disco ya existe")
 		disk.LeerMMR(paths)
-		return
+		return "El disco ya existe"
 	}
 
 	//verificar si existe el directorio
@@ -286,11 +282,11 @@ func (disk Disk) Mkdisk(tks []string) {
 		panic(err)
 	}
 
-	fmt.Println("Disco creado exitosamente: ", paths)
+	return "Disco creado exitosamente: " + paths
 
 }
 
-func (disk Disk) Rmdisk(tks []string) {
+func (disk Disk) Rmdisk(tks []string) string {
 	//inicializar variables
 	path := ""
 
@@ -306,18 +302,15 @@ func (disk Disk) Rmdisk(tks []string) {
 				path = token
 			}
 
-		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
 		}
 	}
 
 	if !FileExist(path) {
-		fmt.Println("El disco no existe")
-		return
+		return "El disco no existe"
 	}
 	os.Remove(path)
-	fmt.Println("Disco eliminado con exito")
+
+	return "Disco eliminado con exito"
 
 }
 
@@ -333,7 +326,7 @@ func FileExist(path string) bool {
 
 var startValue int
 
-func (disk Disk) Fdisk(tks []string) {
+func (disk Disk) Fdisk(tks []string) string {
 	startValue = 0
 
 	//inicializar variables
@@ -352,20 +345,20 @@ func (disk Disk) Fdisk(tks []string) {
 			if strings.ToLower(token) == "bf" || strings.ToLower(token) == "ff" || strings.ToLower(token) == "wf" {
 				fit = strings.ToLower(token)
 			} else {
-				fmt.Println("Parametro fit no valido")
+				return "Parametro fit no valido"
 			}
 		} else if strings.ToLower(tk) == "unit" {
 			if strings.ToLower(token) == "k" || strings.ToLower(token) == "m" {
 				unit = strings.ToLower(token)
 			} else {
-				fmt.Println("Parametro unit no valido")
+				return "Parametro unit no valido"
 			}
 		} else if strings.ToLower(tk) == "size" {
 
 			sizes, err := strconv.Atoi(token)
 			if err != nil || sizes <= 0 {
 				fmt.Println("Parametro size no valido")
-				return
+				return "Parametro size no valido"
 			}
 			size = sizes
 
@@ -390,9 +383,6 @@ func (disk Disk) Fdisk(tks []string) {
 			} else {
 				name = token
 			}
-		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
 		}
 	}
 
@@ -421,8 +411,6 @@ func (disk Disk) Fdisk(tks []string) {
 	} else if unit == "" {
 		size = size * 1024
 	}
-
-	fmt.Println("path: ", paths)
 
 	var Disco Mbr
 	archivo, _ := os.OpenFile(paths, os.O_RDWR|os.O_CREATE, 0755)
@@ -456,17 +444,14 @@ func (disk Disk) Fdisk(tks []string) {
 			}
 		}
 		if used == 4 && !is_type {
-			fmt.Println("No se puede crear mas particiones")
-			return
+			return "No se puede crear mas particiones"
 		} else if ext == 1 && tipo_part == 'e' {
-			fmt.Println("Ya existe una particion extendida")
-			return
+			return "Ya existe una particion extendida"
 		}
 		c++
 	}
 	if ext == 0 && tipo_part == 'l' {
-		fmt.Println("No existe una particion extendida")
-		return
+		return "No existe una particion extendida"
 	}
 
 	if used != 0 {
@@ -475,8 +460,7 @@ func (disk Disk) Fdisk(tks []string) {
 
 	_, err := disk.findby(Disco, name, paths)
 	if err == nil {
-		fmt.Println("Ya existe una particion con ese nombre")
-		return
+		return "Ya existe una particion con ese nombre"
 	}
 	var transitions Partition
 	transitions.PART_status = '1'
@@ -486,8 +470,7 @@ func (disk Disk) Fdisk(tks []string) {
 	transitions.PART_type = tipo_part
 
 	if is_type {
-		disk.logic(transitions, extended, paths)
-		return
+		return disk.logic(transitions, extended, paths)
 	}
 
 	Disco, _ = disk.adjust(Disco, transitions, between, partitions, used)
@@ -495,15 +478,17 @@ func (disk Disk) Fdisk(tks []string) {
 	defer bfile.Close()
 	binary.Write(bfile, binary.LittleEndian, &Disco)
 	if tipo_part == 'p' {
-		fmt.Println("Particion primaria creada con exito")
+		return "Particion primaria creada con exito"
 	}
 	if tipo_part == 'e' {
 		ebr := NewEBR()
 		ebr.EBR_start = int32(startValue)
 		bfile.Seek(int64(startValue), 0)
 		binary.Write(bfile, binary.LittleEndian, &ebr)
-		fmt.Println("Particion extendida creada con exito")
+		return "Particion extendida creada con exito"
 	}
+
+	return ""
 
 }
 
@@ -556,7 +541,7 @@ func (disk Disk) findby(mbr Mbr, name string, path string) (Partition, error) {
 
 	}
 
-	return Partition{}, fmt.Errorf("[fdisk]---- La partición no existe")
+	return Partition{}, fmt.Errorf("la partición no existe")
 }
 
 func (disk *Disk) getlogics(partition Partition, path string) []EBR {
@@ -584,7 +569,7 @@ func (disk *Disk) getlogics(partition Partition, path string) []EBR {
 	return ebrs
 }
 
-func (disk Disk) logic(partition Partition, ep Partition, p string) {
+func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 	var nlogic EBR
 	nlogic.EBR_status = '1'
 	nlogic.EBR_fit = partition.PART_fit
@@ -607,9 +592,7 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) {
 			nlogic.EBR_start = tmp.EBR_start
 			nlogic.EBR_next = nlogic.EBR_start + nlogic.EBR_size + int32(binary.Size(EBR{}))
 			if (ep.PART_size - int32(size)) <= nlogic.EBR_size {
-				fmt.Println("[fdisk] --- almacenamiento al maximo nose puede crear la particion logica")
-				return
-
+				return "almacenamiento al maximo nose puede crear la particion logica"
 			}
 			archivo.Seek(int64(nlogic.EBR_start), 0)
 			binary.Write(archivo, binary.LittleEndian, &nlogic)
@@ -620,8 +603,7 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) {
 			addLogic.EBR_start = nlogic.EBR_next
 			archivo.Seek(int64(addLogic.EBR_start), 0)
 			binary.Write(archivo, binary.LittleEndian, &addLogic)
-			fmt.Println(" [fdisk] ---- partición [LOGICA ]creada correctamente ")
-			return
+			return "partición creada correctamente "
 		}
 		archivo.Seek(int64(tmp.EBR_next), 0)
 		binary.Read(archivo, binary.LittleEndian, &tmp)
@@ -759,7 +741,7 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 			mbr.MBR_Part_4 = partitions[3]
 			return mbr, nil
 		} else {
-			return Mbr{}, errors.New("[fdisk]---- no hay suficiente espacio para realizar la particion")
+			return Mbr{}, errors.New("no hay suficiente espacio para realizar la particion")
 		}
 	}
 }
@@ -815,7 +797,7 @@ func (disk Disk) LeerMMR(paths string) {
 var List_mount []Mount
 var aumento int = 1
 
-func (disk Disk) Mount(tks []string) {
+func (disk Disk) Mount(tks []string) string {
 
 	paths := ""
 	name := ""
@@ -839,19 +821,12 @@ func (disk Disk) Mount(tks []string) {
 			} else {
 				name = token
 			}
-		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
 		}
 	}
 
 	IdLIst := []byte{'1', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 
 	namedisk := strings.Replace(path.Base(paths), ".dsk", "", -1)
-
-	fmt.Println("namedisk: ", namedisk)
-	fmt.Println("name: ", name)
-	fmt.Println("path: ", paths)
 
 	var Disco Mbr
 	file, _ := os.Open(paths)
@@ -918,7 +893,7 @@ func (disk Disk) Mount(tks []string) {
 					}
 				}
 
-				List_mount[i].AddId(id, string(is_L), cont_L)
+				List_mount[i].AddId(id, string(is_L), cont_L, name)
 				break
 			}
 		}
@@ -929,7 +904,7 @@ func (disk Disk) Mount(tks []string) {
 			List_mount[len(List_mount)-1].Disco = namedisk
 			List_mount[len(List_mount)-1].Path = paths
 			List_mount[len(List_mount)-1].Cont = aumento
-			fmt.Println(aumento)
+
 			id += strconv.Itoa(List_mount[len(List_mount)-1].Cont)
 			for i := 1; i < len(IdLIst); i++ {
 				if i == 1 {
@@ -939,15 +914,16 @@ func (disk Disk) Mount(tks []string) {
 				}
 			}
 			aumento++
-			List_mount[len(List_mount)-1].AddId(id, string(is_L), 1)
+			List_mount[len(List_mount)-1].AddId(id, string(is_L), 1, name)
 
 		}
 
 	} else {
-		fmt.Println("no se encontro la particion")
-		return
+		return "no se encontro la particion"
 	}
 	disk.verVector()
+
+	return ""
 
 }
 
@@ -957,13 +933,13 @@ func (disk Disk) verVector() {
 		fmt.Println("Path: ", List_mount[i].Path)
 		for j := 0; j < len(List_mount[i].ids); j++ {
 			fmt.Println("Id: ", List_mount[i].ids[j].Id)
-			fmt.Println("Name: ", List_mount[i].ids[j].Namedisk)
+			fmt.Println("Name: ", List_mount[i].ids[j].NameP)
 
 		}
 	}
 }
 
-func (disk Disk) Mkfs(tks []string) {
+func (disk Disk) Mkfs(tks []string) string {
 
 	types := ""
 	id := ""
@@ -980,8 +956,7 @@ func (disk Disk) Mkfs(tks []string) {
 				types = token
 			}
 			if strings.ToLower(types) != "full" {
-				fmt.Println("El parametro type no es valido")
-				return
+				return "El parametro type no es valido"
 			}
 
 		} else if strings.ToLower(tk) == "id" {
@@ -997,6 +972,8 @@ func (disk Disk) Mkfs(tks []string) {
 		}
 	}
 
+	fmt.Println("id-->:", id)
+
 	if types == "full" {
 		fmt.Println("se realizara un formateo completo")
 	}
@@ -1004,24 +981,25 @@ func (disk Disk) Mkfs(tks []string) {
 	var particion Partition
 	particion, err := disk.EncontrarParticion(id, &paths)
 	if err != nil {
-		fmt.Println("NO HAY DISCOS MONTADOS")
-		return
+
+		return "No hay discos montados"
 	}
 
-	if disk.EstaFormateado(particion, paths) {
-		fmt.Println("YA ESTA FORMATEADO")
-		for {
-			fmt.Println("Desea formatear de nuevo? s/n")
-			var respuesta string
-			fmt.Scanln(&respuesta)
-			if respuesta == "s" || respuesta == "S" {
-				break
-			}
-			if respuesta == "n" || respuesta == "N" {
-				return
-			}
-		}
-	}
+	// if disk.EstaFormateado(particion, paths) {
+	// 	fmt.Println("YA ESTA FORMATEADO")
+	// 	for {
+	// 		fmt.Println("Desea formatear de nuevo? s/n")
+	// 		return ""
+	// 		var respuesta string
+	// 		fmt.Scanln(&respuesta)
+	// 		if respuesta == "s" || respuesta == "S" {
+	// 			break
+	// 		}
+	// 		if respuesta == "n" || respuesta == "N" {
+	// 			return ""
+	// 		}
+	// 	}
+	// }
 
 	ext2 := (particion.PART_size - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inodes{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
 
@@ -1035,6 +1013,8 @@ func (disk Disk) Mkfs(tks []string) {
 	superbloque.S_free_blocks_count = ext2 * 3
 	superbloque.S_free_inodes_count = ext2
 	disk.Format_ext2(superbloque, particion, int(ext2), paths)
+
+	return ""
 
 }
 
@@ -1135,14 +1115,16 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 }
 
 func (disk Disk) EncontrarParticion(id string, p *string) (Partition, error) {
+
 	nombreParticion := ""
 	paths := ""
 
 	for i := 0; i < len(List_mount); i++ {
 		for j := 0; j < len(List_mount[i].ids); j++ {
 			if List_mount[i].ids[j].Id == id {
-				nombreParticion = List_mount[i].ids[j].Namedisk
+				nombreParticion = List_mount[i].ids[j].NameP
 				paths = List_mount[i].Path
+
 				break
 			}
 		}
