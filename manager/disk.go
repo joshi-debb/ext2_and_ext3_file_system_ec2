@@ -244,6 +244,7 @@ func (disk Disk) Mkdisk(tks []string) string {
 	fit = fit[:2]
 
 	if unit == "m" {
+		fmt.Println("size")
 		size = 1024 * 1024 * size
 	} else if unit == "k" {
 		size = 1024 * size
