@@ -64,13 +64,13 @@ func (usr User) Login(tks []string, admin Disk) string {
 	if !estado {
 		estado = true
 	} else {
-		return "ERROR [LOGIN] YA HAY UNA SESION INICIADA"
+		return "Ya existe un usuario activo"
 	}
 	var paths string
 	particion, err := disk.EncontrarParticion(id, &paths)
 	if err != nil {
 		estado = false
-		return "ERROR [LOGIN] PARA LOGEARSE NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 
 	readfiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
@@ -120,29 +120,29 @@ func (usr User) Login(tks []string, admin Disk) string {
 	if !encontrado {
 		estado = false
 		if correct_user && !correct_password {
-			return "~ ERROR [LOGIN] EL USUARIO NO EXISTE"
+			return "No existe el usuario"
 		} else if correct_password && !correct_user {
-			return "~ ERROR [LOGIN] CONTRASEÑA INCORRECTA"
+			return "Contraseña incorrecta"
 		} else if correct_user && correct_password {
-			return "~ ERROR [LOGIN] EL USUARIO Y LA CONTRASEÑA SON INCORRECTOS"
+			return "Usuario y Contraseña incorrecta"
 		}
 	}
 
-	return "[LOGIN] --- SESION INICIADA CON EXITO"
+	return "Logueado con exito"
 
 }
 
 func (usr User) Logout() string {
 	if logeado.User == "" {
-		return "~ ERROR [LOGOUT] NO HAY UNA SESION INICIADA"
+		return "No existe un usuario logueado"
 	}
 	logeado = Usr{}
 	estado = false
-	return "[LOGOUT] --- SESION CERRADA CON EXITO"
+	return "Se ha cerrado sesion con exito"
 
 }
 
-func (usr User) MKGRP(tks []string) string {
+func (usr User) Mkgrp(tks []string) string {
 	name := ""
 
 	//extraer parametros
@@ -166,12 +166,12 @@ func (usr User) MKGRP(tks []string) string {
 	var fileblock Fileblock
 	particion := NewPartition()
 	if !(logeado.User == "root" && logeado.Password == "123") {
-		return "~ ERROR [MKGRP] NO TIENE PERMISOS PARA EJECUTAR ESTE COMANDO"
+		return "Solo el usuario root puede crear grupos"
 	}
 	var paths string
 	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
 	if err != nil {
-		return "~ ERROR [MKGRP] PARA CREAR UN GRUPO NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
@@ -215,27 +215,27 @@ func (usr User) MKGRP(tks []string) string {
 	}
 	if encontrado {
 		fmt.Println("ARCHIVO: ", archivo)
-		return "~ ERROR [MKGRP] EL GRUPO YA EXISTE"
+		return "El grupo ya existe"
 	}
 	if newecontrado {
 		var bytes [64]byte
 		copy(bytes[:], []byte(newarchivo))
 		fileblock.B_content = bytes
-		fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+		fmt.Println(string(fileblock.B_content[:]))
 		readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 		binary.Write(readFiles, binary.LittleEndian, &fileblock)
-		return "[MKGRP] --- GRUPO CREADO CON EXITO"
+		return "Grupo creado con exito"
 	}
 
 	archivo += strconv.Itoa(cont_grp) + ",G," + name + "\n"
 	var bytes [64]byte
 	copy(bytes[:], []byte(archivo))
 	fileblock.B_content = bytes
-	fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
 
-	return "[MKGRP] --- GRUPO CREADO CON EXITO"
+	return "Grupo creado con exito"
 }
 
 func (usr User) extraer(txt string, tab byte) []string {
@@ -248,7 +248,7 @@ func (usr User) extraer(txt string, tab byte) []string {
 	return enviar
 }
 
-func (usr User) RMGRP(tks []string) string {
+func (usr User) Rmgrp(tks []string) string {
 
 	name := ""
 
@@ -273,12 +273,12 @@ func (usr User) RMGRP(tks []string) string {
 	var fileblock Fileblock
 	particion := NewPartition()
 	if !(logeado.User == "root" && logeado.Password == "123") {
-		return "~ ERROR [RMGRP] NO TIENE PERMISOS PARA EJECUTAR ESTE COMANDO"
+		return "Solo el usuario root puede eliminar grupos"
 	}
 	var paths string
 	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
 	if err != nil {
-		return "~ ERROR [RMGRP] PARA ELIMINAR UN GRUPO NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
@@ -288,7 +288,7 @@ func (usr User) RMGRP(tks []string) string {
 	binary.Read(readFiles, binary.LittleEndian, &fileblock)
 
 	archivo := strings.TrimRight(string(fileblock.B_content[:]), "\x00")
-	fmt.Println("ARCHIVO: ", archivo)
+	fmt.Println(archivo)
 	list_users := usr.extraer(archivo, 10)
 	var newarchivo string = ""
 	var encontrado bool = false
@@ -303,8 +303,7 @@ func (usr User) RMGRP(tks []string) string {
 					newarchivo += strconv.Itoa(0) + ",G," + name + "\n"
 					break
 				} else if Users[0] == "0" && Users[2] == name {
-					fmt.Println("ya esta eliminado el grupo")
-					return "~ ERROR [RMGRP] EL GRUPO YA ESTA ELIMINADO"
+					return "El grupo ya esta eliminado"
 				}
 			}
 		}
@@ -316,20 +315,19 @@ func (usr User) RMGRP(tks []string) string {
 		}
 	}
 	if !encontrado {
-		fmt.Println("El grupo no existe")
-		return "~ ERROR [RMGRP] EL GRUPO NO EXISTE"
+		return "El grupo no existe"
 	}
 
 	var bytes [64]byte
 	copy(bytes[:], []byte(newarchivo))
 	fileblock.B_content = bytes
-	fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
-	return "[RMGRP] --- GRUPO ELIMINADO CON EXITO"
+	return "Grupo eliminado con exito"
 }
 
-func (usr User) MKUSR(tks []string) string {
+func (usr User) Mkusr(tks []string) string {
 
 	user := ""
 	pwd := ""
@@ -371,12 +369,12 @@ func (usr User) MKUSR(tks []string) string {
 	particion := NewPartition()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 
-		return "~ ERROR [MKUSR] NO TIENE PERMISOS PARA EJECUTAR ESTE COMANDO"
+		return "Solo el usuario root puede crear usuarios"
 	}
 	var paths string
 	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
 	if err != nil {
-		return "~ ERROR [MKUSR] PARA CREAR UN USUARIO NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
@@ -398,12 +396,12 @@ func (usr User) MKUSR(tks []string) string {
 				validacion = true
 				cont_user, _ = strconv.Atoi(Users[0])
 			} else if Users[0] == "0" && Users[2] == grp {
-				return "~ ERROR [MKUSR] EL GRUPO ESTA ELIMINADO"
+				return "El grupo ya esta eliminado"
 			}
 		} else if list_users[i][2] == 'U' {
 			Users := usr.extraer(list_users[i], 44)
 			if Users[0] != "0" && Users[3] == user {
-				return "~ ERROR [MKUSR] EL USUARIO YA EXISTE"
+				return "El usuario ya existe"
 			} else if Users[0] == "0" && Users[3] == user {
 				ya_esta = true
 				newecontrado = true
@@ -419,29 +417,29 @@ func (usr User) MKUSR(tks []string) string {
 	}
 	if !validacion {
 
-		return "~ ERROR [MKUSR] EL GRUPO NO EXISTE"
+		return "El grupo no existe"
 	}
 	if newecontrado {
 		var bytes [64]byte
 		copy(bytes[:], []byte(newarchivo))
 		fileblock.B_content = bytes
-		fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+		fmt.Println(string(fileblock.B_content[:]))
 		readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 		binary.Write(readFiles, binary.LittleEndian, &fileblock)
-		return "[MKUSR] --- USUARIO CREADO CON EXITO"
+		return "Usuario creado con exito"
 	}
 
 	archivo += strconv.Itoa(cont_user) + ",U," + grp + "," + user + "," + pwd + "\n"
 	var bytes [64]byte
 	copy(bytes[:], []byte(archivo))
 	fileblock.B_content = bytes
-	fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
-	return "[MKUSR] --- USUARIO CREADO CON EXITO"
+	return "Usuario creado con exito"
 }
 
-func (usr User) RMUSER(tks []string) string {
+func (usr User) Rmusr(tks []string) string {
 
 	usuario := ""
 
@@ -467,12 +465,12 @@ func (usr User) RMUSER(tks []string) string {
 	particion := NewPartition()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 
-		return "~ ERROR [RMUSER] NO TIENE PERMISOS PARA EJECUTAR ESTE COMANDO"
+		return "Solo el usuario root puede eliminar usuarios"
 	}
 	var paths string
 	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
 	if err != nil {
-		return "~ ERROR [RMUSER] PARA ELIMINAR UN USUARIO NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
@@ -497,7 +495,7 @@ func (usr User) RMUSER(tks []string) string {
 					newarchivo += strconv.Itoa(0) + ",U," + Users[2] + "," + usuario + "," + Users[4] + "\n"
 					break
 				} else if Users[0] == "0" && Users[3] == usuario {
-					return "~ ERROR [RMUSR] EL USUARIO YA ESTA ELIMINADO"
+					return "El usuario ya esta eliminado"
 				}
 			}
 		}
@@ -509,17 +507,30 @@ func (usr User) RMUSER(tks []string) string {
 		}
 	}
 	if !encontrado {
-		return "~ ERROR [RMUSR] EL USUARIO NO EXISTE"
+		return "El usuario no existe"
 	}
 
 	var bytes [64]byte
 	copy(bytes[:], []byte(newarchivo))
 	fileblock.B_content = bytes
-	fmt.Println("NEW ARCHIVO: ", string(fileblock.B_content[:]))
+	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
 
-	return "[RMUSR] --- USUARIO ELIMINADO CON EXITO"
+	return "Usuario eliminado con exito"
+}
+
+func (usr User) CheckLogin(id string, name string, pass string) string {
+
+	if id == logeado.Id && name == logeado.User && pass != logeado.Password {
+		return "Password incorrecto"
+	} else if id != logeado.Id && name == logeado.User && pass == logeado.Password {
+		return "ID incorrecto"
+	} else if id == logeado.Id && name != logeado.User && pass == logeado.Password {
+		return "Usuario incorrecto"
+	}
+
+	return "Login exitoso"
 }
 
 func (usr User) REP(tks []string) string {
@@ -570,7 +581,7 @@ func (usr User) REP(tks []string) string {
 	pathdisco := ""
 	_, err := disk.EncontrarParticion(id, &pathdisco)
 	if err != nil {
-		return "~ ERROR [REP] PARA EL REPORTE NECESITA UN DISCO MONTADO"
+		return "No se encontro la particion"
 	}
 
 	fmt.Println("PATH: ", path)
@@ -584,5 +595,5 @@ func (usr User) REP(tks []string) string {
 	// 	return "~ ERROR [REP] NO EXISTE ESE TIPO DE REPORTE"
 	// }
 
-	return "[REP] --- REPORTE GENERADO CON EXITO"
+	return "Reporte generado con exito"
 }

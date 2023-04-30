@@ -924,7 +924,7 @@ func (disk Disk) Mount(tks []string) string {
 	}
 	disk.verVector()
 
-	return ""
+	return "Particion montada con exito"
 
 }
 
@@ -982,7 +982,6 @@ func (disk Disk) Mkfs(tks []string) string {
 	var particion Partition
 	particion, err := disk.EncontrarParticion(id, &paths)
 	if err != nil {
-
 		return "No hay discos montados"
 	}
 
@@ -1015,7 +1014,7 @@ func (disk Disk) Mkfs(tks []string) string {
 	superbloque.S_free_inodes_count = ext2
 	disk.Format_ext2(superbloque, particion, int(ext2), paths)
 
-	return ""
+	return "Fromateo completo exitoso"
 
 }
 
@@ -1110,8 +1109,6 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	bfiles.Seek(int64(superbloque.S_block_start), 0)
 	binary.Write(bfiles, binary.LittleEndian, &bloke)
 	binary.Write(bfiles, binary.LittleEndian, &fileb)
-
-	fmt.Println("Formateo exitoso")
 
 }
 

@@ -2,7 +2,6 @@ package manager
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,8 +11,14 @@ import (
 var disk Disk
 var user User
 
-type Comand struct {
-	Parametro string `json:"comando"`
+type Cmds struct {
+	Params string `json:"cmds"`
+}
+
+type Login struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Pass string `json:"pass"`
 }
 
 func Cmd() {
@@ -21,21 +26,45 @@ func Cmd() {
 	router := mux.NewRouter()
 	enableCORS(router)
 
-	router.HandleFunc("/Comands", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/cmds", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		var comando Comand
+		var cmdo Cmds
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
-		err := decoder.Decode(&comando)
+		err := decoder.Decode(&cmdo)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		tk := Token(comando.Parametro)
-		tokens := SplitTokens(comando.Parametro)
+		tk := Token(cmdo.Params)
+		tokens := SplitTokens(cmdo.Params)
 
 		Search(tk, tokens, w, r)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var logged Login
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&logged)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		responde := ""
+
+		responde = user.CheckLogin(logged.Id, logged.Name, logged.Pass)
+
+		respuesta := Cmds{
+			Params: responde,
+		}
+		jsonBytes, _ := json.Marshal(respuesta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBytes)
 
 	}).Methods("POST")
 
@@ -61,31 +90,47 @@ func middlewareCors(next http.Handler) http.Handler {
 		})
 }
 
-// función para buscar comando
+// función para buscar cmdo
 func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) {
+
+	responde := ""
+
 	switch strings.ToLower(tk) {
+
 	case "mkdisk":
-		hola := disk.Mkdisk(tks)
-		respuesta := Comand{
-			Parametro: hola,
-		}
-		jsonBytes, _ := json.Marshal(respuesta)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBytes)
+		responde = disk.Mkdisk(tks)
 	case "rmdisk":
-		disk.Rmdisk(tks)
+		responde = disk.Rmdisk(tks)
 	case "fdisk":
-		disk.Fdisk(tks)
+		responde = disk.Fdisk(tks)
 	case "mount":
-		disk.Mount(tks)
+		responde = disk.Mount(tks)
 	case "mkfs":
-		disk.Mkfs(tks)
+		responde = disk.Mkfs(tks)
 	case "login":
-		user.Login(tks, disk)
+		responde = user.Login(tks, disk)
+	case "logout":
+		responde = user.Logout()
+	case "mkgrp":
+		responde = user.Mkgrp(tks)
+	case "rmgrp":
+		responde = user.Rmgrp(tks)
+	case "mkusr":
+		responde = user.Mkusr(tks)
+	case "rmusr":
+		responde = user.Rmusr(tks)
 
 	default:
-		fmt.Println("Comando no encontrado")
+		responde = "Comando no encontrado"
 	}
+
+	respuesta := Cmds{
+		Params: responde,
+	}
+	jsonBytes, _ := json.Marshal(respuesta)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonBytes)
+
 }
 
 func SplitTokens(txt string) []string {
