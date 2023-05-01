@@ -57,9 +57,9 @@ func (usr User) Login(tks []string, admin Disk) string {
 	}
 
 	disk = admin
-	Superblock := NewSuperblock()
+	Superblock := SuperBlocks()
 	var fileblock Fileblock
-	particion := NewPartition()
+	particion := Partitions()
 
 	if !estado {
 		estado = true
@@ -162,9 +162,9 @@ func (usr User) Mkgrp(tks []string) string {
 		}
 	}
 
-	Superblock := NewSuperblock()
+	Superblock := SuperBlocks()
 	var fileblock Fileblock
-	particion := NewPartition()
+	particion := Partitions()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 		return "Solo el usuario root puede crear grupos"
 	}
@@ -269,9 +269,9 @@ func (usr User) Rmgrp(tks []string) string {
 		}
 	}
 
-	Superblock := NewSuperblock()
+	Superblock := SuperBlocks()
 	var fileblock Fileblock
-	particion := NewPartition()
+	particion := Partitions()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 		return "Solo el usuario root puede eliminar grupos"
 	}
@@ -364,9 +364,9 @@ func (usr User) Mkusr(tks []string) string {
 		}
 	}
 
-	Superblock := NewSuperblock()
+	Superblock := SuperBlocks()
 	var fileblock Fileblock
-	particion := NewPartition()
+	particion := Partitions()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 
 		return "Solo el usuario root puede crear usuarios"
@@ -460,9 +460,9 @@ func (usr User) Rmusr(tks []string) string {
 		}
 	}
 
-	Superblock := NewSuperblock()
+	Superblock := SuperBlocks()
 	var fileblock Fileblock
-	particion := NewPartition()
+	particion := Partitions()
 	if !(logeado.User == "root" && logeado.Password == "123") {
 
 		return "Solo el usuario root puede eliminar usuarios"
@@ -533,12 +533,15 @@ func (usr User) CheckLogin(id string, name string, pass string) string {
 	return "Login exitoso"
 }
 
-func (usr User) REP(tks []string) string {
+func (usr User) MakeReport(tks []string) string {
 
 	name := ""
-	path := ""
 	id := ""
 	rute := ""
+	repPath := ""
+	fileDot := ""
+	fileTxt := ""
+	dirPath := ""
 
 	//extraer parametros
 	for _, token := range tks {
@@ -554,9 +557,24 @@ func (usr User) REP(tks []string) string {
 		} else if strings.ToLower(tk) == "path" {
 			//si trae comillas extraerlas
 			if strings.HasPrefix(token, "\"") {
-				path = token[1 : len(token)-1]
+				repPath = token[1 : len(token)-1]
 			} else {
-				path = token
+				repPath = token
+			}
+
+			//obtener el nombre del archivo .dot
+			fileDot = repPath[0:strings.Index(repPath, ".")] + ".dot"
+
+			//obtener el nombre del archivo .txt
+			fileTxt = repPath[0:strings.Index(repPath, ".")] + ".txt"
+
+			//obtener ruta de carpetas
+			dirPath = repPath
+			for i := len(dirPath) - 1; i >= 0; i-- {
+				if repPath[i] == '/' {
+					dirPath = dirPath[0:i]
+					break
+				}
 			}
 		} else if strings.ToLower(tk) == "id" {
 			//si trae comillas extraerlas
@@ -578,22 +596,32 @@ func (usr User) REP(tks []string) string {
 		}
 	}
 
-	pathdisco := ""
-	_, err := disk.EncontrarParticion(id, &pathdisco)
-	if err != nil {
-		return "No se encontro la particion"
-	}
+	// pathdisco := ""
+	// _, err := disk.EncontrarParticion(id, &pathdisco)
+	// if err != nil {
+	// 	return "No se encontro la particion"
+	// }
 
-	fmt.Println("PATH: ", path)
 	fmt.Println("NAME: ", name)
 	fmt.Println("ID: ", id)
 	fmt.Println("RUTA: ", rute)
+	// fmt.Println("RUTA DISCO: ", pathdisco)
+	fmt.Println("RUTA REPORTE: ", repPath)
+	fmt.Println("RUTA DOT: ", fileDot)
+	fmt.Println("RUTA TXT: ", fileTxt)
+	fmt.Println("RUTA DIR: ", dirPath)
 
-	// if name == "disk" {
-	// 	Disk(paths, pathdisco)
-	// } else {
-	// 	return "~ ERROR [REP] NO EXISTE ESE TIPO DE REPORTE"
-	// }
+	if strings.ToLower(name) == "disk" {
+		fmt.Println("Generando reporte de disco")
+	} else if strings.ToLower(name) == "tree" {
+		fmt.Println("Generando reporte de arbol")
+	} else if strings.ToLower(name) == "sb" {
+		fmt.Println("Generando reporte de superbloque")
+	} else if strings.ToLower(name) == "file" {
+		fmt.Println("Generando reporte de archivo")
+	} else {
+		return "Reporte no valido"
+	}
 
 	return "Reporte generado con exito"
 }

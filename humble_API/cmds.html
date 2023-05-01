@@ -114,10 +114,13 @@
             .then(data => {
                 document.getElementById("respuestas").value = data.cmds;
                 console.log('Success:', data);
+                if (data.cmds == "pause"){
+                    alert("Comando Pause! \n"+" Presione OK para continuar");
+                }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert("Ocurrio un error, ver la consola");
+                alert("Error en el comando");
             });
 
             document.getElementById("comandos").value = "";

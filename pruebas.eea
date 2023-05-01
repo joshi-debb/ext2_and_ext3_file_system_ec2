@@ -1,118 +1,70 @@
-mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco1.dsk
+#execute >path=/home/why/Desktop/pruebas.eea
 
-mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco2.dsk
+mkdisk >size=5 >unit=M >path=/home/why/Desktop/Disco1.dsk
 
 
 pause
+
 fdisk >type=E >path=/home/why/Desktop/Disco1.dsk >unit=M >name=Particion1 >size=1
 fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion2 >size=1
 fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion3 >size=1
 fdisk >path=/home/why/Desktop/Disco1.dsk >type=P >unit=M >name=Particion4 >size=1
 
-fdisk >type=E >path=/home/why/Desktop/Disco2.dsk >unit=M >name=Particion1 >size=1
-fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion2 >size=1
-fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion3 >size=1
-fdisk >path=/home/why/Desktop/Disco2.dsk >type=P >unit=M >name=Particion4 >size=1
-
-
-
 pause
+
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl1 >unit=K >size=200 >fit=bf
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl2 >unit=K >size=200 >fit=bf
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl3 >unit=K >size=200 >fit=bf
 fdisk >type=L >path=/home/why/Desktop/Disco1.dsk >name=Partl4 >unit=K >size=200 >fit=bf
 
-fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl1 >unit=K >size=200 >fit=bf
-fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl2 >unit=K >size=200 >fit=bf
-fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl3 >unit=K >size=200 >fit=bf
-fdisk >type=L >path=/home/why/Desktop/Disco2.dsk >name=Partl4 >unit=K >size=200 >fit=bf
-
-
 pause
-mount >path=/home/why/Desktop/Disco1.dsk >name=Partl1
+
 mount >path=/home/why/Desktop/Disco1.dsk >name=Particion2
 
 pause
-mount >path=/home/why/Desktop/Disco2.dsk >name=Particion2
-mount >path=/home/why/Desktop/Disco2.dsk >name=Partl1
 
-pause
-mount
-
-pause
 mkfs >type="full" >id=531a
 
 pause
+
 login >user=root >pwd=123 >id=531a
+
+pause
 
 Logout
 
 pause
+
 login >user=root >pwd=123 >id=531a
 
 pause
+
 mkgrp >name=usuarios
 
 pause
-mkgrp
 
-pause
-rmgrp >name=usuarios
-
-pause
-mkgrp
-
-pause
 mkusr >user=user1 >pass=usuario >grp=usuarios
 
 pause
+
 rmusr >user=user1
 
+pause
+
+rmgrp >name=usuarios
 
 pause
-mkdir >path=/tareas/user/docs/usac >r=""	
+
+rep >id=531a >path=/home/why/Desktop/reports/reporte_disk.jpg >name=disk
 
 pause
-mkdir >path=/proyectos/user/docs/usac >r=""	
+
+rep >id=531a >path=/home/why/Desktop/reports/reporte_tree.jpg >name=tree
 
 pause
-mkfile >size=8 >path=/home/user/docs/a.txt >r=""
+
+rep >id=531a >path=/home/why/Desktop/reports/reporte_sb.jpg >name=sb
 
 pause
-mkfile >size=5 >path=/pruebas/user/docs/texto.txt >cont=/home/why/Desktop/pruebas.txt >r=""
 
-pause
-cat >file1=/home/user/docs/a.txt
-
-pause
-cat >file1=/pruebas/user/docs/texto.txt
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_mbr.jpg >name=mbr
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_disk.jpg >name=disk
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_inode.jpg >name=inode
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_block.jpg >name=block
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_bm_inode.jpg >name=bm_inode
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_bm_bloc.jpg >name=bm_bloc
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_tree.jpg >name=tree
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_sb.jpg >name=sb
-
-pause
-rep >id=531Disco1 >path=/home/why/Desktop/reports/reporte_journal.jpg >name=journaling
-
-pause
-rep >id=531Disco1 >path=/pruebas/user/docs/texto.txt >ruta=/home/why/Desktop/reporte_file.txt >name=file
+rep >id=531a >path=/pruebas/user/docs/texto.txt >ruta=/home/why/Desktop/reporte_file.txt >name=file

@@ -36,18 +36,7 @@ type Partition struct {
 	PART_name   [16]byte
 }
 
-func NewPartition() Partition {
-	return Partition{
-		PART_status: '0',
-		PART_type:   '-',
-		PART_fit:    '-',
-		PART_start:  -1,
-		PART_size:   0,
-		PART_name:   [16]byte{},
-	}
-}
-
-type EBR struct {
+type Ebr struct {
 	EBR_status byte
 	EBR_fit    byte
 	EBR_start  int32
@@ -56,18 +45,7 @@ type EBR struct {
 	EBR_name   [16]byte
 }
 
-func NewEBR() EBR {
-	return EBR{
-		EBR_status: '0',
-		EBR_fit:    '-',
-		EBR_start:  -1,
-		EBR_size:   0,
-		EBR_next:   -1,
-		EBR_name:   [16]byte{},
-	}
-}
-
-type Mount_id struct {
+type Mounted struct {
 	NameP    string
 	Id       string
 	Namedisk string
@@ -77,7 +55,7 @@ type Mount struct {
 	Disco string
 	Path  string
 	Cont  int
-	ids   []Mount_id
+	ids   []Mounted
 }
 
 type Transition struct {
@@ -88,11 +66,7 @@ type Transition struct {
 	after     int32
 }
 
-func (m *Mount) AddId(id string, namedisk string, no int, namep string) {
-	m.ids = append(m.ids, Mount_id{Id: id, Namedisk: namedisk, No: no, NameP: namep})
-}
-
-type Inodes struct {
+type Inode struct {
 	I_uid   int32
 	I_gid   int32
 	I_size  int32
@@ -102,20 +76,6 @@ type Inodes struct {
 	I_block [16]int32
 	I_type  byte
 	I_perm  int32
-}
-
-func NewInodes() Inodes {
-	return Inodes{
-		I_uid:   -1,
-		I_gid:   -1,
-		I_size:  0,
-		I_atime: 0,
-		I_ctime: 0,
-		I_mtime: 0,
-		I_block: [16]int32{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		I_type:  '-',
-		I_perm:  -1,
-	}
 }
 
 type Superblock struct {
@@ -138,35 +98,9 @@ type Superblock struct {
 	S_block_start       int32
 }
 
-func NewSuperblock() Superblock {
-	return Superblock{
-		S_filesystem_type:   0,
-		S_inodes_count:      0,
-		S_blocks_count:      0,
-		S_free_blocks_count: 0,
-		S_free_inodes_count: 0,
-		S_magic:             0xEF53,
-		S_inode_size:        int32(unsafe.Sizeof(Inodes{})),
-		S_block_size:        int32(unsafe.Sizeof(Folderblock{})),
-		S_first_ino:         0,
-		S_first_blo:         0,
-		S_bm_inode_start:    0,
-		S_bm_block_start:    0,
-		S_inode_start:       0,
-		S_block_start:       0,
-	}
-}
-
 type Content struct {
 	B_name  [12]byte
 	B_inodo int32
-}
-
-func NewFolder() Folderblock {
-	return Folderblock{B_content: [4]Content{NewContent(), NewContent(), NewContent(), NewContent()}}
-}
-func NewContent() Content {
-	return Content{B_name: [12]byte{}, B_inodo: -1}
 }
 
 type Folderblock struct {
@@ -274,10 +208,10 @@ func (disk Disk) Mkdisk(tks []string) string {
 	MBR.MBR_fit = fit[0]
 	MBR.MBR_time = time.Now().Unix()
 	MBR.MBR_asigndisk = int32(rand.Intn(501))
-	MBR.MBR_Part_1 = NewPartition()
-	MBR.MBR_Part_2 = NewPartition()
-	MBR.MBR_Part_3 = NewPartition()
-	MBR.MBR_Part_4 = NewPartition()
+	MBR.MBR_Part_1 = Partitions()
+	MBR.MBR_Part_2 = Partitions()
+	MBR.MBR_Part_3 = Partitions()
+	MBR.MBR_Part_4 = Partitions()
 
 	if err := binary.Write(archivo, binary.LittleEndian, &MBR); err != nil {
 		panic(err)
@@ -482,7 +416,7 @@ func (disk Disk) Fdisk(tks []string) string {
 		return "Particion primaria creada con exito"
 	}
 	if tipo_part == 'e' {
-		ebr := NewEBR()
+		ebr := Ebrs()
 		ebr.EBR_start = int32(startValue)
 		bfile.Seek(int64(startValue), 0)
 		binary.Write(bfile, binary.LittleEndian, &ebr)
@@ -524,7 +458,7 @@ func (disk Disk) findby(mbr Mbr, name string, path string) (Partition, error) {
 		}
 	}
 	if ext {
-		var ebrs []EBR = disk.getlogics(extended, path)
+		var ebrs []Ebr = disk.getlogics(extended, path)
 		for _, ebr := range ebrs {
 			if ebr.EBR_status == '1' {
 				if ebr.EBR_name == bytes {
@@ -545,12 +479,12 @@ func (disk Disk) findby(mbr Mbr, name string, path string) (Partition, error) {
 	return Partition{}, fmt.Errorf("la partición no existe")
 }
 
-func (disk *Disk) getlogics(partition Partition, path string) []EBR {
-	var ebrs []EBR
+func (disk *Disk) getlogics(partition Partition, path string) []Ebr {
+	var ebrs []Ebr
 	archivo, _ := os.OpenFile(path, os.O_RDWR, 0666)
 	defer archivo.Close()
 	archivo.Seek(0, 0)
-	var tmp = NewEBR()
+	var tmp = Ebrs()
 	archivo.Seek(int64(partition.PART_start), 0)
 	binary.Read(archivo, binary.LittleEndian, &tmp)
 
@@ -571,7 +505,7 @@ func (disk *Disk) getlogics(partition Partition, path string) []EBR {
 }
 
 func (disk Disk) logic(partition Partition, ep Partition, p string) string {
-	var nlogic EBR
+	var nlogic Ebr
 	nlogic.EBR_status = '1'
 	nlogic.EBR_fit = partition.PART_fit
 	nlogic.EBR_size = partition.PART_size
@@ -582,23 +516,23 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 	defer archivo.Close()
 	archivo.Seek(0, 0)
 
-	var tmp EBR
+	var tmp Ebr
 	archivo.Seek(int64(ep.PART_start), 0)
 	binary.Read(archivo, binary.LittleEndian, &tmp)
 	fmt.Println("temp", tmp.EBR_start)
 	size := 0
 	for {
-		size += int(tmp.EBR_size) + binary.Size(EBR{})
+		size += int(tmp.EBR_size) + binary.Size(Ebr{})
 		if tmp.EBR_status == '0' && tmp.EBR_next == -1 {
 			nlogic.EBR_start = tmp.EBR_start
-			nlogic.EBR_next = nlogic.EBR_start + nlogic.EBR_size + int32(binary.Size(EBR{}))
+			nlogic.EBR_next = nlogic.EBR_start + nlogic.EBR_size + int32(binary.Size(Ebr{}))
 			if (ep.PART_size - int32(size)) <= nlogic.EBR_size {
 				return "almacenamiento al maximo nose puede crear la particion logica"
 			}
 			archivo.Seek(int64(nlogic.EBR_start), 0)
 			binary.Write(archivo, binary.LittleEndian, &nlogic)
 			archivo.Seek(int64(nlogic.EBR_next), 0)
-			var addLogic EBR
+			var addLogic Ebr
 			addLogic.EBR_status = '0'
 			addLogic.EBR_next = -1
 			addLogic.EBR_start = nlogic.EBR_next
@@ -798,6 +732,10 @@ func (disk Disk) LeerMMR(paths string) {
 var List_mount []Mount
 var aumento int = 1
 
+func (m *Mount) AddId(id string, namedisk string, no int, namep string) {
+	m.ids = append(m.ids, Mounted{Id: id, Namedisk: namedisk, No: no, NameP: namep})
+}
+
 func (disk Disk) Mount(tks []string) string {
 
 	paths := ""
@@ -854,7 +792,7 @@ func (disk Disk) Mount(tks []string) string {
 				break
 			}
 		} else if buscadoPart.PART_type == 'e' {
-			var ebrs []EBR = disk.getlogics(buscadoPart, paths)
+			var ebrs []Ebr = disk.getlogics(buscadoPart, paths)
 			for _, buscadoLog := range ebrs {
 				var bytes [16]byte
 				copy(bytes[:], []byte(name))
@@ -1001,7 +939,7 @@ func (disk Disk) Mkfs(tks []string) string {
 	// 	}
 	// }
 
-	ext2 := (particion.PART_size - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inodes{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
+	ext2 := (particion.PART_size - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inode{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
 
 	var superbloque Superblock
 	superbloque.S_mtime = time.Now().Unix()
@@ -1022,7 +960,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	superbloque.S_bm_inode_start = particion.PART_start + int32(unsafe.Sizeof(Superblock{}))
 	superbloque.S_bm_block_start = superbloque.S_bm_inode_start + int32(bloques)
 	superbloque.S_inode_start = superbloque.S_bm_block_start + (3 * int32(bloques))
-	superbloque.S_block_start = superbloque.S_inode_start + (int32(unsafe.Sizeof(Inodes{})) * int32(bloques))
+	superbloque.S_block_start = superbloque.S_inode_start + (int32(unsafe.Sizeof(Inode{})) * int32(bloques))
 	var tmp byte = '0'
 	leer, _ := os.OpenFile(paths, os.O_RDWR|os.O_CREATE, 0666)
 	defer leer.Close()
@@ -1038,17 +976,17 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 		binary.Write(leer, binary.LittleEndian, &tmp)
 	}
 
-	var inodo Inodes = NewInodes()
+	var inodo Inode = Inodes()
 	leer.Seek(int64(superbloque.S_inode_start), 0)
 	for i := 0; i < bloques; i++ {
 		binary.Write(leer, binary.LittleEndian, &inodo)
 	}
-	var bloqueCarpetas Folderblock = NewFolder()
+	var bloqueCarpetas Folderblock = FolderBlocks()
 	leer.Seek(int64(superbloque.S_block_start), 0)
 	for i := 0; i < (3 * bloques); i++ {
 		binary.Write(leer, binary.LittleEndian, &bloqueCarpetas)
 	}
-	readsuper := NewSuperblock()
+	readsuper := SuperBlocks()
 	supblock, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer supblock.Close()
 	supblock.Seek(int64(particion.PART_start), 0)
@@ -1064,7 +1002,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	inodo.I_type = '0'
 	inodo.I_perm = 664
 
-	bloke := NewFolder()
+	bloke := FolderBlocks()
 	copy(bloke.B_content[0].B_name[:], []byte("."))
 	bloke.B_content[0].B_inodo = 0
 	copy(bloke.B_content[1].B_name[:], []byte(".."))
@@ -1075,7 +1013,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	bloke.B_content[3].B_inodo = -1
 
 	data := "1,G,root\n1,U,root,root,123\n"
-	inodotemp := NewInodes()
+	inodotemp := Inodes()
 	inodotemp.I_uid = 1
 	inodotemp.I_gid = 1
 	inodotemp.I_size = int32(len(data)) + int32(unsafe.Sizeof(Folderblock{}))
@@ -1086,7 +1024,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	inodotemp.I_type = '1'
 	inodotemp.I_perm = 664
 
-	inodo.I_size = inodotemp.I_size + int32(unsafe.Sizeof(Folderblock{})) + int32(unsafe.Sizeof(Inodes{}))
+	inodo.I_size = inodotemp.I_size + int32(unsafe.Sizeof(Folderblock{})) + int32(unsafe.Sizeof(Inode{}))
 
 	var fileb Fileblock
 	copy(fileb.B_content[:], []byte(data))
@@ -1137,7 +1075,7 @@ func (disk Disk) EncontrarParticion(id string, p *string) (Partition, error) {
 }
 
 func (disk Disk) EstaFormateado(partition Partition, paths string) bool {
-	var super Superblock = NewSuperblock()
+	var super Superblock = SuperBlocks()
 	file, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer file.Close()
 	file.Seek(0, 0)
@@ -1146,4 +1084,66 @@ func (disk Disk) EstaFormateado(partition Partition, paths string) bool {
 
 	return super.S_filesystem_type == int32(2)
 
+}
+
+func FolderBlocks() Folderblock {
+	return Folderblock{B_content: [4]Content{Contents(), Contents(), Contents(), Contents()}}
+}
+func Contents() Content {
+	return Content{B_name: [12]byte{}, B_inodo: -1}
+}
+
+func SuperBlocks() Superblock {
+	return Superblock{
+		S_filesystem_type:   0,
+		S_inodes_count:      0,
+		S_blocks_count:      0,
+		S_free_blocks_count: 0,
+		S_free_inodes_count: 0,
+		S_magic:             0xEF53,
+		S_inode_size:        int32(unsafe.Sizeof(Inode{})),
+		S_block_size:        int32(unsafe.Sizeof(Folderblock{})),
+		S_first_ino:         0,
+		S_first_blo:         0,
+		S_bm_inode_start:    0,
+		S_bm_block_start:    0,
+		S_inode_start:       0,
+		S_block_start:       0,
+	}
+}
+
+func Inodes() Inode {
+	return Inode{
+		I_uid:   -1,
+		I_gid:   -1,
+		I_size:  0,
+		I_atime: 0,
+		I_ctime: 0,
+		I_mtime: 0,
+		I_block: [16]int32{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		I_type:  '-',
+		I_perm:  -1,
+	}
+}
+
+func Partitions() Partition {
+	return Partition{
+		PART_status: '0',
+		PART_type:   '-',
+		PART_fit:    '-',
+		PART_start:  -1,
+		PART_size:   0,
+		PART_name:   [16]byte{},
+	}
+}
+
+func Ebrs() Ebr {
+	return Ebr{
+		EBR_status: '0',
+		EBR_fit:    '-',
+		EBR_start:  -1,
+		EBR_size:   0,
+		EBR_next:   -1,
+		EBR_name:   [16]byte{},
+	}
 }

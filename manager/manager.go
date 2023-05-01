@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"bufio"
+	"log"
+	"os"
+
 	"github.com/gorilla/mux"
 )
 
@@ -95,33 +99,44 @@ func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) {
 
 	responde := ""
 
-	switch strings.ToLower(tk) {
+	if strings.HasPrefix(tk, "#") {
+		responde = "comentario: " + tk
+	} else {
 
-	case "mkdisk":
-		responde = disk.Mkdisk(tks)
-	case "rmdisk":
-		responde = disk.Rmdisk(tks)
-	case "fdisk":
-		responde = disk.Fdisk(tks)
-	case "mount":
-		responde = disk.Mount(tks)
-	case "mkfs":
-		responde = disk.Mkfs(tks)
-	case "login":
-		responde = user.Login(tks, disk)
-	case "logout":
-		responde = user.Logout()
-	case "mkgrp":
-		responde = user.Mkgrp(tks)
-	case "rmgrp":
-		responde = user.Rmgrp(tks)
-	case "mkusr":
-		responde = user.Mkusr(tks)
-	case "rmusr":
-		responde = user.Rmusr(tks)
+		switch strings.ToLower(tk) {
 
-	default:
-		responde = "Comando no encontrado"
+		case "mkdisk":
+			responde = disk.Mkdisk(tks)
+		case "rmdisk":
+			responde = disk.Rmdisk(tks)
+		case "fdisk":
+			responde = disk.Fdisk(tks)
+		case "mount":
+			responde = disk.Mount(tks)
+		case "mkfs":
+			responde = disk.Mkfs(tks)
+		case "login":
+			responde = user.Login(tks, disk)
+		case "logout":
+			responde = user.Logout()
+		case "mkgrp":
+			responde = user.Mkgrp(tks)
+		case "rmgrp":
+			responde = user.Rmgrp(tks)
+		case "mkusr":
+			responde = user.Mkusr(tks)
+		case "rmusr":
+			responde = user.Rmusr(tks)
+		case "rep":
+			responde = user.MakeReport(tks)
+		case "pause":
+			responde = "pause"
+		case "execute":
+			responde = execute(tks)
+
+		default:
+			responde = "Comando no encontrado"
+		}
 	}
 
 	respuesta := Cmds{
@@ -130,6 +145,71 @@ func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) {
 	jsonBytes, _ := json.Marshal(respuesta)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonBytes)
+
+}
+
+// función para ejecutar script
+func execute(tks []string) string {
+
+	var txt string
+
+	//extraer parametros
+	for _, token := range tks {
+		tk := token[:strings.Index(token, "=")]
+		token = token[len(tk)+1:]
+		if strings.ToLower(tk) == "path" {
+			//si trae comillas extraerlas
+			if strings.HasPrefix(token, "\"") {
+				txt = token[1 : len(token)-1]
+			} else {
+				txt = token
+			}
+		}
+	}
+
+	filename := txt
+	var lines []string
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	router := mux.NewRouter()
+	enableCORS(router)
+
+	router.HandleFunc("/cmds", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var cmdo Cmds
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&cmdo)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		for _, line := range lines {
+			txt := line
+			tk := Token(txt)
+			if txt != "" {
+				txt = txt[len(tk)+1:]
+				tks := SplitTokens(txt)
+				Search(tk, tks, w, r)
+			}
+		}
+
+	}).Methods("POST")
+
+	return "Script ejecutado"
 
 }
 
