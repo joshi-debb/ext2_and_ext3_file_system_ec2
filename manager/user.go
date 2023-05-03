@@ -645,7 +645,7 @@ func (usr User) DiskReport(repPath string, fileDot string, binPath string) {
 				size_logics += ebr.EBR_size
 				if size_logics < List_read[i].Part_s {
 					cont_logics += 2
-					porcentaje := float64(ebr.EBR_size)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+					porcentaje := float64(ebr.EBR_size) / (float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR)))
 					porcentaje = math.Round(porcentaje*10000.00) / 100.00
 					strGrafica_aux += "<td><b>EBR</b></td> \n"
 					strGrafica_aux += "<td><b>Logica</b> <br/>" + fmt.Sprintf("%v", porcentaje) + "% del disco</td>\n"
@@ -653,7 +653,7 @@ func (usr User) DiskReport(repPath string, fileDot string, binPath string) {
 			}
 			if size_logics < List_read[i].Part_s {
 				cont_logics += 1
-				porcentaje := float64(list_ext[i].EBR_size-size_logics)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+				porcentaje := (float64(List_read[i].Part_s - size_logics)) / (float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR)))
 				porcentaje = math.Round(porcentaje*10000.00) / 100.00
 				strGrafica_aux += "<td><b>Libre</b> <br/>" + fmt.Sprintf("%v", porcentaje) + "% del disco</td>\n"
 			}
@@ -675,21 +675,17 @@ func (usr User) DiskReport(repPath string, fileDot string, binPath string) {
 			cont_logic := strconv.Itoa(cont_logics)
 			strGrafica += "<td colspan='" + cont_logic + "'> <b>Extendida</b> </td> \n"
 		} else if List_read[i].Part_status == '1' && List_read[i].Part_type == 'p' {
-			porcentaje := float64(List_read[i].Part_s)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+			porcentaje := float64(List_read[i].Part_s) / (float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR)))
 			porcentaje = math.Round(porcentaje*10000.00) / 100.00
-			porcentajeInt := int(porcentaje * 100)
-			porcentajeStr := strconv.Itoa(porcentajeInt)
-			strGrafica += "<td rowspan='2'> <b>Primaria</b> <br/>" + porcentajeStr + "% del disco</td> \n"
+			strGrafica += "<td rowspan='2'> <b>Primaria</b> <br/>" + fmt.Sprintf("%v", porcentaje) + "% del disco</td> \n"
 		}
 	}
 
 	if size_primaries < read_MBR.MBR_size {
 		libre := read_MBR.MBR_size - size_primaries
-		resto := float64(libre)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+		resto := float64(libre) / (float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR)))
 		resto = math.Round(resto*10000.00) / 100.00
-		restoInt := int(resto * 100)
-		restoStr := strconv.Itoa(restoInt)
-		strGrafica += "<td rowspan='2'> <b>Libre</b> <br/>" + restoStr + "% del disco</td> \n"
+		strGrafica += "<td rowspan='2'> <b>Libre</b> <br/>" + fmt.Sprintf("%v", resto) + "% del disco</td> \n"
 
 	}
 
@@ -823,7 +819,11 @@ func (usr User) TreeReport(repPath string, fileDot string, binPath string, parti
 		strGrafica += "inode" + strconv.Itoa(i) + " [label = <<table border='0' cellborder='1' cellspacing='0'>\n"
 		strGrafica += "<tr><td colspan = '2' > <b> i-Nodo " + strconv.Itoa(i) + " </b></td></tr>\n"
 
-		strGrafica += "<tr>\n <td><b>i_type</b></td> <td> <b>" + strconv.Itoa(int(inodes.I_type)) + "</b></td>\n </tr>\n"
+		if strconv.Itoa(int(inodes.I_type)) == "48" {
+			strGrafica += "<tr>\n <td><b>i_type</b></td> <td> <b>" + strconv.Itoa(0) + "</b></td>\n </tr>\n"
+		} else if strconv.Itoa(int(inodes.I_type)) == "49" {
+			strGrafica += "<tr>\n <td><b>i_type</b></td> <td> <b>" + strconv.Itoa(1) + "</b></td>\n </tr>\n"
+		}
 
 		strGrafica += "<tr>\n <td>i_uid</td> <td>" + strconv.Itoa(int(inodes.I_uid)) + "</td>\n </tr>\n"
 		strGrafica += "<tr>\n <td>i_gid</td> <td>" + strconv.Itoa(int(inodes.I_gid)) + "</td>\n </tr>\n"
@@ -924,7 +924,6 @@ func (usr User) TreeReport(repPath string, fileDot string, binPath string, parti
 	}
 
 	path_tree = repPath
-
 }
 
 func (usr User) FileReport(repPath string, fileDot string, binPath string, rute string, partitions Partition) {

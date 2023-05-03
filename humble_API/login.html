@@ -123,6 +123,7 @@
             .then(response => response.json())
             .then(data => {
                 console.log('Success:', data.cmds);
+                console.log(data.cmds)
                 if (data.cmds == "Login exitoso"){
                     window.location.href = "report.html";
                 }

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"bufio"
-	"log"
 	"os"
 
 	"github.com/gorilla/mux"
@@ -46,7 +45,12 @@ func Cmd() {
 		tk := Token(cmdo.Params)
 		tokens := SplitTokens(cmdo.Params)
 
-		Search(tk, tokens, w, r)
+		respuesta := Cmds{
+			Params: Search(tk, tokens, w, r),
+		}
+		jsonBytes, _ := json.Marshal(respuesta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBytes)
 
 	}).Methods("POST")
 
@@ -140,6 +144,33 @@ func Cmd() {
 
 	}).Methods("POST")
 
+	router.HandleFunc("/scripts", func(w http.ResponseWriter, r *http.Request) {
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		defer file.Close()
+
+		respuestas := ""
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			tk := Token(scanner.Text())
+			tokens := SplitTokens(scanner.Text())
+			respuestas += Search(tk, tokens, w, r)
+			respuestas += "\n"
+		}
+
+		respuesta := Cmds{
+			Params: respuestas,
+		}
+		jsonBytes, _ := json.Marshal(respuesta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBytes)
+
+	}).Methods("POST")
+
 	http.ListenAndServe(":8080", router)
 }
 
@@ -163,122 +194,44 @@ func middlewareCors(next http.Handler) http.Handler {
 }
 
 // función para buscar cmdo
-func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) {
-
-	responde := ""
+func Search(tk string, tks []string, w http.ResponseWriter, r *http.Request) string {
 
 	if strings.HasPrefix(tk, "#") {
-		responde = "comentario: " + tk
+		return "comentario: " + tk
 	} else {
 
 		switch strings.ToLower(tk) {
 
 		case "mkdisk":
-			responde = disk.Mkdisk(tks)
+			return disk.Mkdisk(tks)
 		case "rmdisk":
-			responde = disk.Rmdisk(tks)
+			return disk.Rmdisk(tks)
 		case "fdisk":
-			responde = disk.Fdisk(tks)
+			return disk.Fdisk(tks)
 		case "mount":
-			responde = disk.Mount(tks)
+			return disk.Mount(tks)
 		case "mkfs":
-			responde = disk.Mkfs(tks)
+			return disk.Mkfs(tks)
 		case "login":
-			responde = user.Login(tks, disk)
+			return user.Login(tks, disk)
 		case "logout":
-			responde = user.Logout()
+			return user.Logout()
 		case "mkgrp":
-			responde = user.Mkgrp(tks)
+			return user.Mkgrp(tks)
 		case "rmgrp":
-			responde = user.Rmgrp(tks)
+			return user.Rmgrp(tks)
 		case "mkusr":
-			responde = user.Mkusr(tks)
+			return user.Mkusr(tks)
 		case "rmusr":
-			responde = user.Rmusr(tks)
+			return user.Rmusr(tks)
 		case "rep":
-			responde = user.MakeReport(tks)
+			return user.MakeReport(tks)
 		case "pause":
-			responde = "pause"
-		case "execute":
-			responde = execute(tks)
-
+			return "pause"
 		default:
-			responde = "Comando no encontrado"
+			return ""
 		}
 	}
-
-	respuesta := Cmds{
-		Params: responde,
-	}
-	jsonBytes, _ := json.Marshal(respuesta)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonBytes)
-
-}
-
-// función para ejecutar script
-func execute(tks []string) string {
-
-	var txt string
-
-	//extraer parametros
-	for _, token := range tks {
-		tk := token[:strings.Index(token, "=")]
-		token = token[len(tk)+1:]
-		if strings.ToLower(tk) == "path" {
-			//si trae comillas extraerlas
-			if strings.HasPrefix(token, "\"") {
-				txt = token[1 : len(token)-1]
-			} else {
-				txt = token
-			}
-		}
-	}
-
-	filename := txt
-	var lines []string
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		lines = append(lines, line)
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	router := mux.NewRouter()
-	enableCORS(router)
-
-	router.HandleFunc("/cmds", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		var cmdo Cmds
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-		err := decoder.Decode(&cmdo)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		for _, line := range lines {
-			txt := line
-			tk := Token(txt)
-			if txt != "" {
-				txt = txt[len(tk)+1:]
-				tks := SplitTokens(txt)
-				Search(tk, tks, w, r)
-			}
-		}
-
-	}).Methods("POST")
-
-	return "Script ejecutado"
-
 }
 
 func SplitTokens(txt string) []string {

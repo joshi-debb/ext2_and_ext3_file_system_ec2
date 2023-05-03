@@ -28,22 +28,31 @@
             background-color: rgb(21, 152, 234);
         }
 
+        #input_cmds2 {
+            width: 700px;
+            height: 50px;
+            background-color: rgb(230, 234, 18);
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
 
         #input_cmds {
             width: 700px;
             height: 50px;
             background-color: rgb(230, 234, 18);
             position: absolute;
-            top: 20%;
+            top: 15%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
-            
+ 
         #text_area {
             width: 700px;
             height: 50px;
             position: absolute;
-            top: 30%;
+            top: 35%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
@@ -52,7 +61,7 @@
             width: 700px;
             height: 50px;
             position: absolute;
-            top: 82%;
+            top: 85%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
@@ -70,8 +79,12 @@
 
         <div class="input-group" id="input_cmds">
             <input id="comandos" type="text" class="form-control" placeholder="Ingrese un Comando" aria-label="Recipient's username with two button addons">
-            <button class="btn btn-outline-secondary" type="button">Examinar</button>
             <button class="btn btn-outline-secondary" type="button" onclick="cmds()">Ejecutar</button>
+        </div>
+
+        <div class="input-group" id="input_cmds2">
+            <input class="form-control" type="file" id="formFile">
+            <button class="btn btn-outline-secondary" type="button" onclick="read_script()">Ejecutar</button>
         </div>
     
         <div class="form-floating" id="text_area">
@@ -90,6 +103,20 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
 
     <script>
+
+        var aux3 = document.getElementById("historial");
+
+        const ifls = document.getElementById('formFile');
+        ifls.addEventListener('change', (event) => {
+            const fils = event.target.files[0];
+            const rd = new FileReader();
+            rd.readAsText(fils);
+            rd.onload = (event) => {
+                const file = event.target.result;
+                console.log(file);
+                aux3.value += file + "\n";
+            };
+        });
 
         function cmds(){
             var aux = document.getElementById("comandos");
@@ -130,7 +157,33 @@
             window.location.href = "login.html";
         }
 
-        
+        function read_script(){
+
+            const aux = document.getElementById('formFile').files[0];
+            const reader = new FormData();
+            reader.append('file', aux);
+
+            var aux3 = document.getElementById("historial");
+
+
+            fetch ('http://localhost:8080/scripts', {
+                method: 'POST',
+                body: reader
+            })
+
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("respuestas").value = data.cmds;
+                console.log('Success:', data);
+
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error en el comando");
+            });
+
+            
+        }
         
     </script>
 
