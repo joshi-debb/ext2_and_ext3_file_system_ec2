@@ -43,7 +43,7 @@ mkgrp >name=usuarios
 
 pause
 
-mkusr >user=user1 >pass=usuario >grp=usuarios
+mkusr >user=user1 >pwd=usuario >grp=usuarios
 
 pause
 
@@ -55,16 +55,16 @@ rmgrp >name=usuarios
 
 pause
 
-rep >id=531a >path=/home/why/Desktop/reports/reporte_disk.jpg >name=disk
+rep >id=531a >path=/home/why/Desktop/reports/reporte_disk.pdf >name=disk
 
 pause
 
-rep >id=531a >path=/home/why/Desktop/reports/reporte_tree.jpg >name=tree
+rep >id=531a >path=/home/why/Desktop/reports/reporte_tree.pdf >name=tree
 
 pause
 
-rep >id=531a >path=/home/why/Desktop/reports/reporte_sb.jpg >name=sb
+rep >id=531a >path=/home/why/Desktop/reports/reporte_sb.pdf >name=sb
 
 pause
 
-rep >id=531a >path=/pruebas/user/docs/texto.txt >ruta=/home/why/Desktop/reporte_file.txt >name=file
+rep >id=531a >path=/home/why/Desktop/reports/texto.txt >ruta=/home/why/Desktop/reporte_file.txt >name=file

@@ -28,12 +28,12 @@ type Mbr struct {
 }
 
 type Partition struct {
-	PART_status byte
-	PART_type   byte
-	PART_fit    byte
-	PART_start  int32
-	PART_size   int32
-	PART_name   [16]byte
+	Part_status byte
+	Part_type   byte
+	Part_fit    byte
+	Part_start  int32
+	Part_s      int32
+	Part_name   [16]byte
 }
 
 type Ebr struct {
@@ -164,7 +164,6 @@ func (disk Disk) Mkdisk(tks []string) string {
 	}
 
 	if FileExist(paths) {
-		disk.LeerMMR(paths)
 		return "El disco ya existe"
 	}
 
@@ -178,7 +177,6 @@ func (disk Disk) Mkdisk(tks []string) string {
 	fit = fit[:2]
 
 	if unit == "m" {
-		fmt.Println("size")
 		size = 1024 * 1024 * size
 	} else if unit == "k" {
 		size = 1024 * size
@@ -292,7 +290,6 @@ func (disk Disk) Fdisk(tks []string) string {
 
 			sizes, err := strconv.Atoi(token)
 			if err != nil || sizes <= 0 {
-				fmt.Println("Parametro size no valido")
 				return "Parametro size no valido"
 			}
 			size = sizes
@@ -309,7 +306,7 @@ func (disk Disk) Fdisk(tks []string) string {
 			if strings.ToLower(token) == "e" || strings.ToLower(token) == "l" || strings.ToLower(token) == "p" {
 				typed = strings.ToLower(token)
 			} else {
-				fmt.Println("Parametro type no valido")
+				return "Parametro type no valido"
 			}
 		} else if strings.ToLower(tk) == "name" {
 			//si trae comillas extraerlas
@@ -360,11 +357,11 @@ func (disk Disk) Fdisk(tks []string) string {
 	base := int32(unsafe.Sizeof(Disco))
 	var extended Partition
 	for _, prttn := range partitions {
-		if prttn.PART_status == '1' {
+		if prttn.Part_status == '1' {
 			var trn Transition
 			trn.partition = c
-			trn.start = prttn.PART_start
-			trn.end = prttn.PART_start + prttn.PART_size
+			trn.start = prttn.Part_start
+			trn.end = prttn.Part_start + prttn.Part_s
 			trn.before = trn.start - base
 			base = trn.end
 			if used != 0 {
@@ -373,7 +370,7 @@ func (disk Disk) Fdisk(tks []string) string {
 			between = append(between, trn)
 			used++
 
-			if prttn.PART_type == 'e' {
+			if prttn.Part_type == 'e' {
 				ext++
 				extended = prttn
 			}
@@ -398,11 +395,11 @@ func (disk Disk) Fdisk(tks []string) string {
 		return "Ya existe una particion con ese nombre"
 	}
 	var transitions Partition
-	transitions.PART_status = '1'
-	transitions.PART_fit = ajust
-	copy(transitions.PART_name[:], name)
-	transitions.PART_size = int32(size)
-	transitions.PART_type = tipo_part
+	transitions.Part_status = '1'
+	transitions.Part_fit = ajust
+	copy(transitions.Part_name[:], name)
+	transitions.Part_s = int32(size)
+	transitions.Part_type = tipo_part
 
 	if is_type {
 		return disk.logic(transitions, extended, paths)
@@ -413,14 +410,14 @@ func (disk Disk) Fdisk(tks []string) string {
 	defer bfile.Close()
 	binary.Write(bfile, binary.LittleEndian, &Disco)
 	if tipo_part == 'p' {
-		return "Particion primaria creada con exito"
+		return "Particion Primaria creada con exito"
 	}
 	if tipo_part == 'e' {
 		ebr := Ebrs()
 		ebr.EBR_start = int32(startValue)
 		bfile.Seek(int64(startValue), 0)
 		binary.Write(bfile, binary.LittleEndian, &ebr)
-		return "Particion extendida creada con exito"
+		return "Particion Extendida creada con exito"
 	}
 
 	return ""
@@ -448,10 +445,10 @@ func (disk Disk) findby(mbr Mbr, name string, path string) (Partition, error) {
 	var bytes [16]byte
 	copy(bytes[:], []byte(name))
 	for _, partition1 := range partitions {
-		if partition1.PART_status == '1' {
-			if partition1.PART_name == bytes {
+		if partition1.Part_status == '1' {
+			if partition1.Part_name == bytes {
 				return partition1, nil
-			} else if partition1.PART_type == 'e' {
+			} else if partition1.Part_type == 'e' {
 				ext = true
 				extended = partition1
 			}
@@ -463,12 +460,12 @@ func (disk Disk) findby(mbr Mbr, name string, path string) (Partition, error) {
 			if ebr.EBR_status == '1' {
 				if ebr.EBR_name == bytes {
 					var tmp Partition
-					tmp.PART_status = '1'
-					tmp.PART_type = 'l'
-					tmp.PART_fit = ebr.EBR_fit
-					tmp.PART_start = ebr.EBR_start
-					tmp.PART_size = ebr.EBR_size
-					tmp.PART_name = ebr.EBR_name
+					tmp.Part_status = '1'
+					tmp.Part_type = 'l'
+					tmp.Part_fit = ebr.EBR_fit
+					tmp.Part_start = ebr.EBR_start
+					tmp.Part_s = ebr.EBR_size
+					tmp.Part_name = ebr.EBR_name
 					return tmp, nil
 				}
 			}
@@ -485,7 +482,7 @@ func (disk *Disk) getlogics(partition Partition, path string) []Ebr {
 	defer archivo.Close()
 	archivo.Seek(0, 0)
 	var tmp = Ebrs()
-	archivo.Seek(int64(partition.PART_start), 0)
+	archivo.Seek(int64(partition.Part_start), 0)
 	binary.Read(archivo, binary.LittleEndian, &tmp)
 
 	for {
@@ -507,9 +504,9 @@ func (disk *Disk) getlogics(partition Partition, path string) []Ebr {
 func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 	var nlogic Ebr
 	nlogic.EBR_status = '1'
-	nlogic.EBR_fit = partition.PART_fit
-	nlogic.EBR_size = partition.PART_size
-	copy(nlogic.EBR_name[:], partition.PART_name[:])
+	nlogic.EBR_fit = partition.Part_fit
+	nlogic.EBR_size = partition.Part_s
+	copy(nlogic.EBR_name[:], partition.Part_name[:])
 	nlogic.EBR_next = -1
 
 	archivo, _ := os.OpenFile(p, os.O_RDWR, 0666)
@@ -517,17 +514,16 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 	archivo.Seek(0, 0)
 
 	var tmp Ebr
-	archivo.Seek(int64(ep.PART_start), 0)
+	archivo.Seek(int64(ep.Part_start), 0)
 	binary.Read(archivo, binary.LittleEndian, &tmp)
-	fmt.Println("temp", tmp.EBR_start)
 	size := 0
 	for {
 		size += int(tmp.EBR_size) + binary.Size(Ebr{})
 		if tmp.EBR_status == '0' && tmp.EBR_next == -1 {
 			nlogic.EBR_start = tmp.EBR_start
 			nlogic.EBR_next = nlogic.EBR_start + nlogic.EBR_size + int32(binary.Size(Ebr{}))
-			if (ep.PART_size - int32(size)) <= nlogic.EBR_size {
-				return "almacenamiento al maximo nose puede crear la particion logica"
+			if (ep.Part_s - int32(size)) <= nlogic.EBR_size {
+				return "No se puede crear mas particiones logicas"
 			}
 			archivo.Seek(int64(nlogic.EBR_start), 0)
 			binary.Write(archivo, binary.LittleEndian, &nlogic)
@@ -538,7 +534,7 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 			addLogic.EBR_start = nlogic.EBR_next
 			archivo.Seek(int64(addLogic.EBR_start), 0)
 			binary.Write(archivo, binary.LittleEndian, &addLogic)
-			return "partición creada correctamente "
+			return "Partición Logica creada correctamente "
 		}
 		archivo.Seek(int64(tmp.EBR_next), 0)
 		binary.Read(archivo, binary.LittleEndian, &tmp)
@@ -548,8 +544,8 @@ func (disk Disk) logic(partition Partition, ep Partition, p string) string {
 
 func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u int) (Mbr, error) {
 	if u == 0 {
-		p.PART_start = int32(unsafe.Sizeof(mbr))
-		startValue = int(p.PART_start)
+		p.Part_start = int32(unsafe.Sizeof(mbr))
+		startValue = int(p.Part_start)
 		mbr.MBR_Part_1 = p
 		return mbr, nil
 	} else {
@@ -562,19 +558,19 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 				continue
 			}
 			if mbr.MBR_fit == 'f' {
-				if toUse.before >= p.PART_size || toUse.after >= p.PART_size {
+				if toUse.before >= p.Part_s || toUse.after >= p.Part_s {
 					break
 				}
 				toUse = tr
 			} else if mbr.MBR_fit == 'b' {
-				if toUse.before < p.PART_size || toUse.after <= p.PART_size {
+				if toUse.before < p.Part_s || toUse.after <= p.Part_s {
 					toUse = tr
 				} else {
-					if tr.before >= p.PART_size || tr.after >= p.PART_size {
-						b1 := toUse.before - p.PART_size
-						a1 := toUse.after - p.PART_size
-						b2 := tr.before - p.PART_size
-						a2 := tr.after - p.PART_size
+					if tr.before >= p.Part_s || tr.after >= p.Part_s {
+						b1 := toUse.before - p.Part_s
+						a1 := toUse.after - p.Part_s
+						b2 := tr.before - p.Part_s
+						a2 := tr.after - p.Part_s
 
 						if (b1 < b2 && b1 < a2) || (a1 < b2 && a1 < a2) {
 							c++
@@ -586,14 +582,14 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 
 			} else if mbr.MBR_fit == 'w' {
 
-				if !(toUse.before >= p.PART_size) || !(toUse.after >= p.PART_size) {
+				if !(toUse.before >= p.Part_s) || !(toUse.after >= p.Part_s) {
 					toUse = tr
 				} else {
-					if tr.before >= p.PART_size || tr.after >= p.PART_size {
-						b1 := toUse.before - p.PART_size
-						a1 := toUse.after - p.PART_size
-						b2 := tr.before - p.PART_size
-						a2 := tr.after - p.PART_size
+					if tr.before >= p.Part_s || tr.after >= p.Part_s {
+						b1 := toUse.before - p.Part_s
+						a1 := toUse.after - p.Part_s
+						b2 := tr.before - p.Part_s
+						a2 := tr.after - p.Part_s
 
 						if (b1 > b2 && b1 > a2) || (a1 > b2 && a1 > a2) {
 							c++
@@ -606,34 +602,34 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 			c++
 		}
 
-		if toUse.before >= p.PART_size || toUse.after >= p.PART_size {
+		if toUse.before >= p.Part_s || toUse.after >= p.Part_s {
 			if mbr.MBR_fit == 'f' {
-				if toUse.before >= p.PART_size {
-					p.PART_start = toUse.start - toUse.before
-					startValue = int(p.PART_start)
+				if toUse.before >= p.Part_s {
+					p.Part_start = toUse.start - toUse.before
+					startValue = int(p.Part_start)
 				} else {
-					p.PART_start = toUse.end
-					startValue = int(p.PART_start)
+					p.Part_start = toUse.end
+					startValue = int(p.Part_start)
 				}
 			} else if mbr.MBR_fit == 'b' {
-				b1 := toUse.before - p.PART_size
-				a1 := toUse.after - p.PART_size
-				if (toUse.before >= p.PART_size && b1 < a1) || !(toUse.after >= p.PART_start) {
-					p.PART_start = toUse.start - toUse.before
-					startValue = int(p.PART_start)
+				b1 := toUse.before - p.Part_s
+				a1 := toUse.after - p.Part_s
+				if (toUse.before >= p.Part_s && b1 < a1) || !(toUse.after >= p.Part_start) {
+					p.Part_start = toUse.start - toUse.before
+					startValue = int(p.Part_start)
 				} else {
-					p.PART_start = toUse.end
-					startValue = int(p.PART_start)
+					p.Part_start = toUse.end
+					startValue = int(p.Part_start)
 				}
 			} else if mbr.MBR_fit == 'w' {
-				b1 := toUse.before - p.PART_size
-				a1 := toUse.after - p.PART_size
-				if (toUse.before >= p.PART_size && b1 > a1) || !(toUse.after >= p.PART_start) {
-					p.PART_start = toUse.start - toUse.before
-					startValue = int(p.PART_start)
+				b1 := toUse.before - p.Part_s
+				a1 := toUse.after - p.Part_s
+				if (toUse.before >= p.Part_s && b1 > a1) || !(toUse.after >= p.Part_start) {
+					p.Part_start = toUse.start - toUse.before
+					startValue = int(p.Part_start)
 				} else {
-					p.PART_start = toUse.end
-					startValue = int(p.PART_start)
+					p.Part_start = toUse.end
+					startValue = int(p.Part_start)
 				}
 			}
 
@@ -643,7 +639,7 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 			}
 
 			for i, partition := range partitions {
-				if partition.PART_status == '0' {
+				if partition.Part_status == '0' {
 					partitions[i] = p
 					break
 				}
@@ -652,7 +648,7 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 			var aux Partition
 			for i := 3; i >= 0; i-- {
 				for j := 0; j < i; j++ {
-					if partitions[j].PART_start > partitions[j+1].PART_start {
+					if partitions[j].Part_start > partitions[j+1].Part_start {
 						aux = partitions[j+1]
 						partitions[j+1] = partitions[j]
 						partitions[j] = aux
@@ -662,7 +658,7 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 
 			for i := 3; i >= 0; i-- {
 				for j := 0; j < i; j++ {
-					if partitions[j].PART_status == '0' {
+					if partitions[j].Part_status == '0' {
 						aux = partitions[j]
 						partitions[j] = partitions[j+1]
 						partitions[j+1] = aux
@@ -676,57 +672,9 @@ func (disk *Disk) adjust(mbr Mbr, p Partition, t []Transition, ps []Partition, u
 			mbr.MBR_Part_4 = partitions[3]
 			return mbr, nil
 		} else {
-			return Mbr{}, errors.New("no hay suficiente espacio para realizar la particion")
+			return Mbr{}, errors.New("no se pueden crear mas particiones")
 		}
 	}
-}
-
-func (disk Disk) LeerMMR(paths string) {
-
-	archivo, _ := os.Open(paths)
-	defer archivo.Close()
-	var read_MBR Mbr
-	binary.Read(archivo, binary.LittleEndian, &read_MBR)
-	fmt.Println("---------------------MBR---------------------")
-	fmt.Println("mbr_size: ", read_MBR.MBR_size)
-	fmt.Println("mbr_fit: ", string(read_MBR.MBR_fit))
-	fmt.Println("mbr_time: ", read_MBR.MBR_time)
-	fmt.Println("mbr_asigndisk: ", read_MBR.MBR_asigndisk)
-	fmt.Println("tamano del mbr", unsafe.Sizeof(read_MBR))
-
-	List_read := List_Partition(read_MBR)
-	for i := 0; i < 4; i++ {
-		if List_read[i].PART_status == '1' {
-			if List_read[i].PART_type == 'p' {
-				fmt.Println("--------------PARTICION PRIMARIA --------------")
-				fmt.Println("	part_status: ", string(List_read[i].PART_status))
-				fmt.Println("	part_type:   ", string(List_read[i].PART_type))
-				fmt.Println("	part_fit: ", string(List_read[i].PART_fit))
-				fmt.Println("	part_start: ", List_read[i].PART_start)
-				fmt.Println("	part_size: ", List_read[i].PART_size)
-				fmt.Println("	part_name: ", string(List_read[i].PART_name[:]))
-			} else if List_read[i].PART_type == 'e' {
-				fmt.Println("--------------PARTICION EXTENDIDA --------------")
-				fmt.Println("	part_status: ", string(List_read[i].PART_status))
-				fmt.Println("	part_type:   ", string(List_read[i].PART_type))
-				fmt.Println("	part_fit: ", string(List_read[i].PART_fit))
-				fmt.Println("	part_start: ", List_read[i].PART_start)
-				fmt.Println("	part_size: ", List_read[i].PART_size)
-				fmt.Println("	part_name: ", string(List_read[i].PART_name[:]))
-				list_ext := disk.getlogics(List_read[i], paths)
-				for _, ebr := range list_ext {
-					fmt.Println("--------------PARTICION LOGICA --------------")
-					fmt.Println("	part_status: ", string(ebr.EBR_status))
-					fmt.Println("	part_fit: ", string(ebr.EBR_fit))
-					fmt.Println("	part_start: ", ebr.EBR_start)
-					fmt.Println("	part_size: ", ebr.EBR_size)
-					fmt.Println("	part_next: ", ebr.EBR_next)
-					fmt.Println("	part_name: ", string(ebr.EBR_name[:]))
-				}
-			}
-		}
-	}
-
 }
 
 var List_mount []Mount
@@ -773,8 +721,6 @@ func (disk Disk) Mount(tks []string) string {
 	file.Seek(0, 0)
 	binary.Read(file, binary.LittleEndian, &Disco)
 
-	fmt.Println(Disco.MBR_size, Disco.MBR_fit, Disco.MBR_time, Disco.MBR_asigndisk)
-
 	var partitions [4]Partition
 	partitions[0] = Disco.MBR_Part_1
 	partitions[1] = Disco.MBR_Part_2
@@ -784,14 +730,14 @@ func (disk Disk) Mount(tks []string) string {
 
 	for _, buscadoPart := range partitions {
 
-		if buscadoPart.PART_type == 'p' {
+		if buscadoPart.Part_type == 'p' {
 			var bytes [16]byte
 			copy(bytes[:], []byte(name))
-			if buscadoPart.PART_name == bytes {
+			if buscadoPart.Part_name == bytes {
 				encontrado_P = true
 				break
 			}
-		} else if buscadoPart.PART_type == 'e' {
+		} else if buscadoPart.Part_type == 'e' {
 			var ebrs []Ebr = disk.getlogics(buscadoPart, paths)
 			for _, buscadoLog := range ebrs {
 				var bytes [16]byte
@@ -860,22 +806,30 @@ func (disk Disk) Mount(tks []string) string {
 	} else {
 		return "no se encontro la particion"
 	}
-	disk.verVector()
 
-	return "Particion montada con exito"
+	respuesta := ""
+	respuesta = disk.mounted()
+
+	return "Particion montada con exito \n" + respuesta
 
 }
 
-func (disk Disk) verVector() {
+func (disk Disk) mounted() string {
+	disco := ""
+	id := ""
+	name := ""
 	for i := 0; i < len(List_mount); i++ {
-		fmt.Println("Disco: ", List_mount[i].Disco)
-		fmt.Println("Path: ", List_mount[i].Path)
+		disco = List_mount[i].Disco
 		for j := 0; j < len(List_mount[i].ids); j++ {
-			fmt.Println("Id: ", List_mount[i].ids[j].Id)
-			fmt.Println("Name: ", List_mount[i].ids[j].NameP)
+			id = List_mount[i].ids[j].Id
+			name = List_mount[i].ids[j].NameP
 
 		}
 	}
+
+	respuesta := ""
+	respuesta += " Disco: " + disco + "  Particion: " + name + "  Id: " + id
+	return respuesta
 }
 
 func (disk Disk) Mkfs(tks []string) string {
@@ -906,40 +860,18 @@ func (disk Disk) Mkfs(tks []string) string {
 				id = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
-	fmt.Println("id-->:", id)
-
-	if types == "full" {
-		fmt.Println("se realizara un formateo completo")
-	}
 	paths := ""
 	var particion Partition
-	particion, err := disk.EncontrarParticion(id, &paths)
+	particion, err := disk.FindPartition(id, &paths)
 	if err != nil {
 		return "No hay discos montados"
 	}
 
-	// if disk.EstaFormateado(particion, paths) {
-	// 	fmt.Println("YA ESTA FORMATEADO")
-	// 	for {
-	// 		fmt.Println("Desea formatear de nuevo? s/n")
-	// 		return ""
-	// 		var respuesta string
-	// 		fmt.Scanln(&respuesta)
-	// 		if respuesta == "s" || respuesta == "S" {
-	// 			break
-	// 		}
-	// 		if respuesta == "n" || respuesta == "N" {
-	// 			return ""
-	// 		}
-	// 	}
-	// }
-
-	ext2 := (particion.PART_size - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inode{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
+	ext2 := (particion.Part_s - int32(unsafe.Sizeof(Superblock{}))) / (4 + int32(unsafe.Sizeof(Inode{})) + 3*int32(unsafe.Sizeof(Fileblock{})))
 
 	var superbloque Superblock
 	superbloque.S_mtime = time.Now().Unix()
@@ -952,19 +884,23 @@ func (disk Disk) Mkfs(tks []string) string {
 	superbloque.S_free_inodes_count = ext2
 	disk.Format_ext2(superbloque, particion, int(ext2), paths)
 
-	return "Fromateo completo exitoso"
+	if types == "full" {
+		return "Se realizara un formateo completo"
+	} else {
+		return "Se realizara un formateo rapido"
+	}
 
 }
 
 func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloques int, paths string) {
-	superbloque.S_bm_inode_start = particion.PART_start + int32(unsafe.Sizeof(Superblock{}))
+	superbloque.S_bm_inode_start = particion.Part_start + int32(unsafe.Sizeof(Superblock{}))
 	superbloque.S_bm_block_start = superbloque.S_bm_inode_start + int32(bloques)
 	superbloque.S_inode_start = superbloque.S_bm_block_start + (3 * int32(bloques))
 	superbloque.S_block_start = superbloque.S_inode_start + (int32(unsafe.Sizeof(Inode{})) * int32(bloques))
-	var tmp byte = '0'
+	var tmp byte = 48
 	leer, _ := os.OpenFile(paths, os.O_RDWR|os.O_CREATE, 0666)
 	defer leer.Close()
-	leer.Seek(int64(particion.PART_start), 0)
+	leer.Seek(int64(particion.Part_start), 0)
 	binary.Write(leer, binary.LittleEndian, &superbloque)
 
 	leer.Seek(int64(superbloque.S_bm_inode_start), 0)
@@ -989,7 +925,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	readsuper := SuperBlocks()
 	supblock, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer supblock.Close()
-	supblock.Seek(int64(particion.PART_start), 0)
+	supblock.Seek(int64(particion.Part_start), 0)
 	binary.Read(supblock, binary.LittleEndian, &readsuper)
 
 	inodo.I_uid = 1
@@ -999,7 +935,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	inodo.I_ctime = superbloque.S_umtime
 	inodo.I_mtime = superbloque.S_umtime
 	inodo.I_block[0] = 0
-	inodo.I_type = '0'
+	inodo.I_type = 48
 	inodo.I_perm = 664
 
 	bloke := FolderBlocks()
@@ -1021,7 +957,7 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 	inodotemp.I_ctime = superbloque.S_umtime
 	inodotemp.I_mtime = superbloque.S_umtime
 	inodotemp.I_block[0] = 1
-	inodotemp.I_type = '1'
+	inodotemp.I_type = 49
 	inodotemp.I_perm = 664
 
 	inodo.I_size = inodotemp.I_size + int32(unsafe.Sizeof(Folderblock{})) + int32(unsafe.Sizeof(Inode{}))
@@ -1031,7 +967,9 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 
 	bfiles, _ := os.OpenFile(paths, os.O_RDWR|os.O_CREATE, 0666)
 	defer bfiles.Close()
-	caracter := '1'
+
+	var caracter byte = 49
+
 	bfiles.Seek(int64(superbloque.S_bm_inode_start), 0)
 	binary.Write(bfiles, binary.LittleEndian, &caracter)
 	binary.Write(bfiles, binary.LittleEndian, &caracter)
@@ -1042,15 +980,17 @@ func (disk Disk) Format_ext2(superbloque Superblock, particion Partition, bloque
 
 	bfiles.Seek(int64(superbloque.S_inode_start), 0)
 	binary.Write(bfiles, binary.LittleEndian, &inodo)
+	bfiles.Seek(int64(superbloque.S_inode_start+int32(unsafe.Sizeof(Inode{}))), 0)
 	binary.Write(bfiles, binary.LittleEndian, &inodotemp)
 
 	bfiles.Seek(int64(superbloque.S_block_start), 0)
 	binary.Write(bfiles, binary.LittleEndian, &bloke)
+	bfiles.Seek(int64(superbloque.S_block_start+int32(unsafe.Sizeof(Fileblock{}))), 0)
 	binary.Write(bfiles, binary.LittleEndian, &fileb)
 
 }
 
-func (disk Disk) EncontrarParticion(id string, p *string) (Partition, error) {
+func (disk Disk) FindPartition(id string, p *string) (Partition, error) {
 
 	nombreParticion := ""
 	paths := ""
@@ -1079,7 +1019,7 @@ func (disk Disk) EstaFormateado(partition Partition, paths string) bool {
 	file, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer file.Close()
 	file.Seek(0, 0)
-	file.Seek(int64(partition.PART_start), 0)
+	file.Seek(int64(partition.Part_start), 0)
 	binary.Read(file, binary.LittleEndian, &super)
 
 	return super.S_filesystem_type == int32(2)
@@ -1128,12 +1068,12 @@ func Inodes() Inode {
 
 func Partitions() Partition {
 	return Partition{
-		PART_status: '0',
-		PART_type:   '-',
-		PART_fit:    '-',
-		PART_start:  -1,
-		PART_size:   0,
-		PART_name:   [16]byte{},
+		Part_status: '0',
+		Part_type:   '-',
+		Part_fit:    '-',
+		Part_start:  -1,
+		Part_s:      0,
+		Part_name:   [16]byte{},
 	}
 }
 

@@ -2,7 +2,9 @@ package manager
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"bufio"
@@ -69,6 +71,72 @@ func Cmd() {
 		jsonBytes, _ := json.Marshal(respuesta)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBytes)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/reporte1", func(w http.ResponseWriter, r *http.Request) {
+		pdfFile, err := os.Open(user.return_disk())
+		if err != nil {
+			http.Error(w, "No existe el archivo", 404)
+			return
+		}
+		defer pdfFile.Close()
+		stat, err := pdfFile.Stat()
+		if err != nil {
+			http.Error(w, "Error", 500)
+			return
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", "inline; filename=archivo.pdf")
+		w.Header().Set("Content-Length", fileSize)
+
+		io.Copy(w, pdfFile)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/reporte2", func(w http.ResponseWriter, r *http.Request) {
+		pdfFile, err := os.Open(user.return_sb())
+		if err != nil {
+			http.Error(w, "No existe el archivo", 404)
+			return
+		}
+		defer pdfFile.Close()
+		stat, err := pdfFile.Stat()
+		if err != nil {
+			http.Error(w, "Error", 500)
+			return
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", "inline; filename=archivo.pdf")
+		w.Header().Set("Content-Length", fileSize)
+
+		io.Copy(w, pdfFile)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/reporte3", func(w http.ResponseWriter, r *http.Request) {
+		pdfFile, err := os.Open(user.return_tree())
+		if err != nil {
+			http.Error(w, "No existe el archivo", 404)
+			return
+		}
+		defer pdfFile.Close()
+		stat, err := pdfFile.Stat()
+		if err != nil {
+			http.Error(w, "Error", 500)
+			return
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", "inline; filename=archivo.pdf")
+		w.Header().Set("Content-Length", fileSize)
+
+		io.Copy(w, pdfFile)
 
 	}).Methods("POST")
 

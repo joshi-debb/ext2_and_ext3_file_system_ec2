@@ -3,9 +3,12 @@ package manager
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -16,6 +19,10 @@ type Usr struct {
 	Id       string
 	Uid      int
 }
+
+var path_disk string = ""
+var path_sb string = ""
+var path_tree string = ""
 
 var logeado Usr
 var estado bool = false
@@ -51,8 +58,7 @@ func (usr User) Login(tks []string, admin Disk) string {
 				id = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
@@ -67,7 +73,7 @@ func (usr User) Login(tks []string, admin Disk) string {
 		return "Ya existe un usuario activo"
 	}
 	var paths string
-	particion, err := disk.EncontrarParticion(id, &paths)
+	particion, err := disk.FindPartition(id, &paths)
 	if err != nil {
 		estado = false
 		return "No se encontro la particion"
@@ -75,7 +81,7 @@ func (usr User) Login(tks []string, admin Disk) string {
 
 	readfiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readfiles.Close()
-	readfiles.Seek(int64(particion.PART_start), 0)
+	readfiles.Seek(int64(particion.Part_start), 0)
 	binary.Read(readfiles, binary.LittleEndian, &Superblock)
 	readfiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Read(readfiles, binary.LittleEndian, &fileblock)
@@ -157,8 +163,7 @@ func (usr User) Mkgrp(tks []string) string {
 				name = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
@@ -169,13 +174,13 @@ func (usr User) Mkgrp(tks []string) string {
 		return "Solo el usuario root puede crear grupos"
 	}
 	var paths string
-	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
+	particion, err := disk.FindPartition(logeado.Id, &paths)
 	if err != nil {
 		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
-	readFiles.Seek(int64(particion.PART_start), 0)
+	readFiles.Seek(int64(particion.Part_start), 0)
 	binary.Read(readFiles, binary.LittleEndian, &Superblock)
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Read(readFiles, binary.LittleEndian, &fileblock)
@@ -214,28 +219,25 @@ func (usr User) Mkgrp(tks []string) string {
 		}
 	}
 	if encontrado {
-		fmt.Println("ARCHIVO: ", archivo)
 		return "El grupo ya existe"
 	}
 	if newecontrado {
 		var bytes [64]byte
 		copy(bytes[:], []byte(newarchivo))
 		fileblock.B_content = bytes
-		fmt.Println(string(fileblock.B_content[:]))
 		readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 		binary.Write(readFiles, binary.LittleEndian, &fileblock)
-		return "Grupo creado con exito"
+		return "Grupo creado con exito \n" + string(fileblock.B_content[:])
 	}
 
 	archivo += strconv.Itoa(cont_grp) + ",G," + name + "\n"
 	var bytes [64]byte
 	copy(bytes[:], []byte(archivo))
 	fileblock.B_content = bytes
-	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
 
-	return "Grupo creado con exito"
+	return "Grupo creado con exito \n" + string(fileblock.B_content[:])
 }
 
 func (usr User) extraer(txt string, tab byte) []string {
@@ -264,8 +266,7 @@ func (usr User) Rmgrp(tks []string) string {
 				name = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
@@ -276,19 +277,18 @@ func (usr User) Rmgrp(tks []string) string {
 		return "Solo el usuario root puede eliminar grupos"
 	}
 	var paths string
-	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
+	particion, err := disk.FindPartition(logeado.Id, &paths)
 	if err != nil {
 		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
-	readFiles.Seek(int64(particion.PART_start), 0)
+	readFiles.Seek(int64(particion.Part_start), 0)
 	binary.Read(readFiles, binary.LittleEndian, &Superblock)
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Read(readFiles, binary.LittleEndian, &fileblock)
 
 	archivo := strings.TrimRight(string(fileblock.B_content[:]), "\x00")
-	fmt.Println(archivo)
 	list_users := usr.extraer(archivo, 10)
 	var newarchivo string = ""
 	var encontrado bool = false
@@ -321,10 +321,9 @@ func (usr User) Rmgrp(tks []string) string {
 	var bytes [64]byte
 	copy(bytes[:], []byte(newarchivo))
 	fileblock.B_content = bytes
-	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
-	return "Grupo eliminado con exito"
+	return "Grupo eliminado con exito \n" + string(fileblock.B_content[:])
 }
 
 func (usr User) Mkusr(tks []string) string {
@@ -351,7 +350,7 @@ func (usr User) Mkusr(tks []string) string {
 			} else {
 				pwd = token
 			}
-		} else if strings.ToLower(tk) == "id" {
+		} else if strings.ToLower(tk) == "grp" {
 			//si trae comillas extraerlas
 			if strings.HasPrefix(token, "\"") {
 				grp = token[1 : len(token)-1]
@@ -359,8 +358,7 @@ func (usr User) Mkusr(tks []string) string {
 				grp = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
@@ -372,13 +370,13 @@ func (usr User) Mkusr(tks []string) string {
 		return "Solo el usuario root puede crear usuarios"
 	}
 	var paths string
-	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
+	particion, err := disk.FindPartition(logeado.Id, &paths)
 	if err != nil {
 		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
-	readFiles.Seek(int64(particion.PART_start), 0)
+	readFiles.Seek(int64(particion.Part_start), 0)
 	binary.Read(readFiles, binary.LittleEndian, &Superblock)
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Read(readFiles, binary.LittleEndian, &fileblock)
@@ -423,20 +421,18 @@ func (usr User) Mkusr(tks []string) string {
 		var bytes [64]byte
 		copy(bytes[:], []byte(newarchivo))
 		fileblock.B_content = bytes
-		fmt.Println(string(fileblock.B_content[:]))
 		readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 		binary.Write(readFiles, binary.LittleEndian, &fileblock)
-		return "Usuario creado con exito"
+		return "Usuario creado con exito \n" + string(fileblock.B_content[:])
 	}
 
 	archivo += strconv.Itoa(cont_user) + ",U," + grp + "," + user + "," + pwd + "\n"
 	var bytes [64]byte
 	copy(bytes[:], []byte(archivo))
 	fileblock.B_content = bytes
-	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
-	return "Usuario creado con exito"
+	return "Usuario creado con exito \n" + string(fileblock.B_content[:])
 }
 
 func (usr User) Rmusr(tks []string) string {
@@ -447,7 +443,7 @@ func (usr User) Rmusr(tks []string) string {
 	for _, token := range tks {
 		tk := token[:strings.Index(token, "=")]
 		token = token[len(tk)+1:]
-		if strings.ToLower(tk) == "name" {
+		if strings.ToLower(tk) == "user" {
 			//si trae comillas extraerlas
 			if strings.HasPrefix(token, "\"") {
 				usuario = token[1 : len(token)-1]
@@ -455,8 +451,7 @@ func (usr User) Rmusr(tks []string) string {
 				usuario = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
@@ -468,13 +463,13 @@ func (usr User) Rmusr(tks []string) string {
 		return "Solo el usuario root puede eliminar usuarios"
 	}
 	var paths string
-	particion, err := disk.EncontrarParticion(logeado.Id, &paths)
+	particion, err := disk.FindPartition(logeado.Id, &paths)
 	if err != nil {
 		return "No se encontro la particion"
 	}
 	readFiles, _ := os.OpenFile(paths, os.O_RDWR, 0666)
 	defer readFiles.Close()
-	readFiles.Seek(int64(particion.PART_start), 0)
+	readFiles.Seek(int64(particion.Part_start), 0)
 	binary.Read(readFiles, binary.LittleEndian, &Superblock)
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Read(readFiles, binary.LittleEndian, &fileblock)
@@ -513,11 +508,10 @@ func (usr User) Rmusr(tks []string) string {
 	var bytes [64]byte
 	copy(bytes[:], []byte(newarchivo))
 	fileblock.B_content = bytes
-	fmt.Println(string(fileblock.B_content[:]))
 	readFiles.Seek(int64(Superblock.S_block_start)+int64(unsafe.Sizeof(Folderblock{})), 0)
 	binary.Write(readFiles, binary.LittleEndian, &fileblock)
 
-	return "Usuario eliminado con exito"
+	return "Usuario eliminado con exito \n" + string(fileblock.B_content[:])
 }
 
 func (usr User) CheckLogin(id string, name string, pass string) string {
@@ -591,37 +585,375 @@ func (usr User) MakeReport(tks []string) string {
 				rute = token
 			}
 		} else {
-			fmt.Println("No se esperaba el parametro: ", tk)
-			break
+			return "No se esperaba el parametro: " + tk
 		}
 	}
 
-	// pathdisco := ""
-	// _, err := disk.EncontrarParticion(id, &pathdisco)
-	// if err != nil {
-	// 	return "No se encontro la particion"
-	// }
-
-	fmt.Println("NAME: ", name)
-	fmt.Println("ID: ", id)
-	fmt.Println("RUTA: ", rute)
-	// fmt.Println("RUTA DISCO: ", pathdisco)
-	fmt.Println("RUTA REPORTE: ", repPath)
-	fmt.Println("RUTA DOT: ", fileDot)
-	fmt.Println("RUTA TXT: ", fileTxt)
-	fmt.Println("RUTA DIR: ", dirPath)
-
-	if strings.ToLower(name) == "disk" {
-		fmt.Println("Generando reporte de disco")
-	} else if strings.ToLower(name) == "tree" {
-		fmt.Println("Generando reporte de arbol")
-	} else if strings.ToLower(name) == "sb" {
-		fmt.Println("Generando reporte de superbloque")
-	} else if strings.ToLower(name) == "file" {
-		fmt.Println("Generando reporte de archivo")
-	} else {
-		return "Reporte no valido"
+	//verificar si existe el directorio
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		cmds := "mkdir -p \"" + dirPath + "\""
+		exec.Command("sh", "-c", cmds).Run()
 	}
 
-	return "Reporte generado con exito"
+	var particiones Partition
+
+	binPath := ""
+	particiones, err := disk.FindPartition(id, &binPath)
+	if err != nil {
+		return "No se encontro la particion"
+	}
+
+	if strings.ToLower(name) == "disk" {
+		user.DiskReport(repPath, fileDot, binPath)
+		return "Reporte generado en: " + repPath
+	} else if strings.ToLower(name) == "tree" {
+		user.TreeReport(repPath, fileTxt, binPath, particiones)
+		return "Reporte generado en: " + repPath
+	} else if strings.ToLower(name) == "sb" {
+		user.SBReport(repPath, fileTxt, binPath, particiones)
+		return "Reporte generado en: " + repPath
+	} else if strings.ToLower(name) == "file" {
+		user.FileReport(repPath, fileTxt, binPath, rute, particiones)
+		return "Reporte generado en: " + repPath
+	} else {
+		return "Tipo de reporte no valido"
+	}
+}
+
+func (usr User) DiskReport(repPath string, fileDot string, binPath string) {
+
+	archivo, _ := os.Open(binPath)
+	defer archivo.Close()
+	var read_MBR Mbr
+	binary.Read(archivo, binary.LittleEndian, &read_MBR)
+
+	var size_logics int32 = 0
+	cont_logics := 0
+
+	strGrafica := "digraph G{ \n graph [ dpi = \"800\" ]; \n node [shape = plaintext]; \n mbr [label = < \n "
+	strGrafica += "<table  cellpadding='20' border='0' cellborder='1' cellspacing='0'>\n"
+	strGrafica += "<tr>\n"
+	strGrafica += "<td rowspan='2' height='200'><b>MBR</b></td> \n"
+
+	strGrafica_aux := "<tr>\n"
+
+	List_read := List_Partition(read_MBR)
+	for i := 0; i < 4; i++ {
+		if List_read[i].Part_status == '1' && List_read[i].Part_type == 'e' {
+			list_ext := disk.getlogics(List_read[i], binPath)
+			for _, ebr := range list_ext {
+				size_logics += ebr.EBR_size
+				if size_logics < List_read[i].Part_s {
+					cont_logics += 2
+					porcentaje := float64(ebr.EBR_size)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+					porcentaje = math.Round(porcentaje*10000.00) / 100.00
+					strGrafica_aux += "<td><b>EBR</b></td> \n"
+					strGrafica_aux += "<td><b>Logica</b> <br/>" + fmt.Sprintf("%v", porcentaje) + "% del disco</td>\n"
+				}
+			}
+			if size_logics < List_read[i].Part_s {
+				cont_logics += 1
+				porcentaje := float64(list_ext[i].EBR_size-size_logics)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+				porcentaje = math.Round(porcentaje*10000.00) / 100.00
+				strGrafica_aux += "<td><b>Libre</b> <br/>" + fmt.Sprintf("%v", porcentaje) + "% del disco</td>\n"
+			}
+		}
+	}
+
+	strGrafica_aux += "</tr>\n\n"
+
+	var size_primaries int32 = 0
+
+	for i := 0; i < 4; i++ {
+		if List_read[i].Part_status == '1' {
+			size_primaries += List_read[i].Part_s
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		if List_read[i].Part_status == '1' && List_read[i].Part_type == 'e' {
+			cont_logic := strconv.Itoa(cont_logics)
+			strGrafica += "<td colspan='" + cont_logic + "'> <b>Extendida</b> </td> \n"
+		} else if List_read[i].Part_status == '1' && List_read[i].Part_type == 'p' {
+			porcentaje := float64(List_read[i].Part_s)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+			porcentaje = math.Round(porcentaje*10000.00) / 100.00
+			porcentajeInt := int(porcentaje * 100)
+			porcentajeStr := strconv.Itoa(porcentajeInt)
+			strGrafica += "<td rowspan='2'> <b>Primaria</b> <br/>" + porcentajeStr + "% del disco</td> \n"
+		}
+	}
+
+	if size_primaries < read_MBR.MBR_size {
+		libre := read_MBR.MBR_size - size_primaries
+		resto := float64(libre)/float64(read_MBR.MBR_size) - float64(unsafe.Sizeof(read_MBR))
+		resto = math.Round(resto*10000.00) / 100.00
+		restoInt := int(resto * 100)
+		restoStr := strconv.Itoa(restoInt)
+		strGrafica += "<td rowspan='2'> <b>Libre</b> <br/>" + restoStr + "% del disco</td> \n"
+
+	}
+
+	strGrafica += "</tr>\n\n"
+	strGrafica += strGrafica_aux
+	strGrafica += "</table>>];\n}\n"
+
+	// create and write to file
+	file, err := os.Create(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer file.Close()
+	_, err = file.WriteString(strGrafica)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// execute dot command
+	dotCmd := exec.Command("dot", "-Tpdf", fileDot, "-o", repPath)
+	err = dotCmd.Run()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// remove file
+	err = os.Remove(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	path_disk = repPath
+
+}
+
+func (usr User) SBReport(repPath string, fileDot string, binPath string, partitions Partition) {
+
+	archivo, _ := os.Open(binPath)
+	defer archivo.Close()
+
+	var super Superblock
+
+	archivo.Seek(int64(partitions.Part_start), 0)
+	binary.Read(archivo, binary.LittleEndian, &super)
+
+	strGrafica := "digraph G{ \n graph [ dpi = \"800\" ]; \n node [shape = plaintext]; \n mbr [label = < \n"
+	strGrafica += "<table border='0' cellborder='1' cellspacing='0'>\n"
+	strGrafica += "<tr><td colspan = '2' ><b>Superblock</b></td></tr>\n"
+	strGrafica += "<tr>\n <td><b>s_filesystem_type</b></td> <td><b>" + strconv.Itoa(int(super.S_filesystem_type)) + "</b></td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_inodes_count</td>\n<td>" + strconv.Itoa(int(super.S_inodes_count)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_free_inodes_count</td>\n<td>" + strconv.Itoa(int(super.S_free_inodes_count)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_blocks_count</td>\n<td>" + strconv.Itoa(int(super.S_blocks_count)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_free_blocks_count</td>\n<td>" + strconv.Itoa(int(super.S_free_blocks_count)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_mtime</td>\n<td>" + time.Unix(super.S_mtime, 0).Format("02/01/2006 15:04:05") + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_umtime</td>\n<td>" + time.Unix(super.S_umtime, 0).Format("02/01/2006 15:04:05") + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_mnt_count</td>\n<td>" + strconv.Itoa(int(super.S_mnt_count)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_magic</td>\n<td>" + strconv.Itoa(int(super.S_magic)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_inode_size</td>\n<td>" + strconv.Itoa(int(super.S_inode_size)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_block_size</td>\n<td>" + strconv.Itoa(int(super.S_block_size)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_first_ino</td>\n<td>" + strconv.Itoa(int(super.S_first_ino)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_first_blo</td>\n<td>" + strconv.Itoa(int(super.S_first_blo)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_bm_inode_start</td>\n<td>" + strconv.Itoa(int(super.S_bm_inode_start)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_bm_block_start</td>\n<td>" + strconv.Itoa(int(super.S_bm_block_start)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_inode_start</td>\n<td>" + strconv.Itoa(int(super.S_inode_start)) + "</td>\n </tr>\n"
+	strGrafica += "<tr>\n <td>s_block_start</td>\n<td>" + strconv.Itoa(int(super.S_block_start)) + "</td>\n </tr>\n"
+	strGrafica += "</table>>];"
+	strGrafica += "\n\n}\n"
+
+	// create and write to file
+	file, err := os.Create(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer file.Close()
+	_, err = file.WriteString(strGrafica)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// execute dot command
+	dotCmd := exec.Command("dot", "-Tpdf", fileDot, "-o", repPath)
+	err = dotCmd.Run()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// remove file
+	err = os.Remove(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	path_sb = repPath
+
+}
+
+func (usr User) TreeReport(repPath string, fileDot string, binPath string, partitions Partition) {
+
+	var super Superblock
+	var inodes Inode = Inodes()
+	aux, _ := os.OpenFile(binPath, os.O_RDWR, 0666)
+	defer aux.Close()
+	aux.Seek(int64(partitions.Part_start), 0)
+	binary.Read(aux, binary.LittleEndian, &super)
+
+	aux.Seek(int64(super.S_bm_inode_start), 0)
+	bmInodo := make([]byte, super.S_inodes_count)
+	binary.Read(aux, binary.LittleEndian, &bmInodo)
+
+	aux.Seek(int64(super.S_bm_block_start), 0)
+	bmBloque := make([]byte, super.S_blocks_count)
+	binary.Read(aux, binary.LittleEndian, &bmBloque)
+
+	aux.Seek(int64(super.S_inode_start), 0)
+	binary.Read(aux, binary.LittleEndian, &inodes)
+	var freeInodes int = GetInodes(super, binPath)
+
+	strGrafica := "digraph G{ \n rankdir=LR; \n graph []; \n node [shape = plaintext]; \n"
+
+	for i := 0; i < freeInodes; i++ {
+		strGrafica += "inode" + strconv.Itoa(i) + " [label = <<table border='0' cellborder='1' cellspacing='0'>\n"
+		strGrafica += "<tr><td colspan = '2' > <b> i-Nodo " + strconv.Itoa(i) + " </b></td></tr>\n"
+
+		strGrafica += "<tr>\n <td><b>i_type</b></td> <td> <b>" + strconv.Itoa(int(inodes.I_type)) + "</b></td>\n </tr>\n"
+
+		strGrafica += "<tr>\n <td>i_uid</td> <td>" + strconv.Itoa(int(inodes.I_uid)) + "</td>\n </tr>\n"
+		strGrafica += "<tr>\n <td>i_gid</td> <td>" + strconv.Itoa(int(inodes.I_gid)) + "</td>\n </tr>\n"
+		strGrafica += "<tr>\n <td>i_size</td> <td>" + strconv.Itoa(int(inodes.I_size)) + "</td>\n </tr>\n"
+		strGrafica += "<tr>\n <td>i_atime</td> <td>" + time.Unix(inodes.I_atime, 0).Format("02/01/2006 15:04:05") + "</td>\n </tr>\n"
+		strGrafica += "<tr>\n <td>i_ctime</td> <td>" + time.Unix(inodes.I_ctime, 0).Format("02/01/2006 15:04:05") + "</td>\n </tr>\n"
+		strGrafica += "<tr>\n <td>i_mtime</td> <td>" + time.Unix(inodes.I_mtime, 0).Format("02/01/2006 15:04:05") + "</td>\n </tr>\n"
+
+		for j := 0; j < 15; j++ {
+			strGrafica += "<tr>\n <td>i_block_" + strconv.Itoa(j+1) + "</td> <td port=\"" + strconv.Itoa(j) + "\">" + strconv.Itoa(int(inodes.I_block[j])) + "</td>\n </tr>\n"
+		}
+
+		strGrafica += "<tr>\n <td><b>i_perm</b></td> <td><b>" + strconv.Itoa(int(inodes.I_perm)) + "</b></td>\n </tr>\n"
+		strGrafica += "</table>>];\n"
+
+		if inodes.I_type == 48 {
+			for j := 0; j < 12; j++ {
+				if inodes.I_block[j] != -1 {
+					strGrafica += "inode" + strconv.Itoa(i) + ":" + strconv.Itoa(j) + "-> block" + strconv.Itoa(int(inodes.I_block[j])) + ":n\n"
+					var foldertemp Folderblock
+					aux.Seek(int64(super.S_block_start+(int32(unsafe.Sizeof(Folderblock{}))*inodes.I_block[j])), 0)
+					binary.Read(aux, binary.LittleEndian, &foldertemp)
+					strGrafica += "block" + strconv.Itoa(int(inodes.I_block[j])) + "  [label = <<table border='0' cellborder='1' cellspacing='0'>\n"
+					strGrafica += "<tr><td colspan = '2' > <b> block " + strconv.Itoa(int(inodes.I_block[j])) + "</b></td></tr>\n"
+					var aux string
+					for k := 0; k < 4; k++ {
+						aux += strings.TrimRight(string(foldertemp.B_content[k].B_name[:]), "\x00")
+						strGrafica += "<tr>\n <td>" + aux + "</td>\n <td port=\"" + strconv.Itoa(k) + "\">" + strconv.Itoa(int(foldertemp.B_content[k].B_inodo)) + "</td>\n </tr>\n"
+					}
+					strGrafica += "</table>>];\n"
+
+					for b := 0; b < 4; b++ {
+						if foldertemp.B_content[b].B_inodo != -1 {
+							es := strings.TrimRight(string(foldertemp.B_content[b].B_name[:]), "\x00")
+							if !(es == "." || es == "..") {
+								strGrafica += "block" + strconv.Itoa(int(inodes.I_block[j])) + ":" + strconv.Itoa(b) + " -> inode" + strconv.Itoa(int(foldertemp.B_content[b].B_inodo)) + ":n\n"
+							}
+						}
+					}
+				}
+			}
+
+		} else {
+			for j := 0; j < 15; j++ {
+				if inodes.I_block[j] != -1 {
+					if i < 12 {
+						strGrafica += "inode" + strconv.Itoa(i) + ":" + strconv.Itoa(j) + "-> block" + strconv.Itoa(int(inodes.I_block[j])) + ":n\n"
+						var filetemp Fileblock
+						aux.Seek(int64(super.S_block_start+(int32(unsafe.Sizeof(filetemp))*inodes.I_block[j])), 0)
+						binary.Read(aux, binary.LittleEndian, &filetemp)
+						strGrafica += "block" + strconv.Itoa(int(inodes.I_block[j])) + " [label = <<table border='0' cellborder='1' cellspacing='0'>\n"
+						strGrafica += "<tr><td colspan = '2' ><b> block " + strconv.Itoa(int(inodes.I_block[j])) + "</b></td></tr>\n"
+						strGrafica += "<tr><td colspan = '2'>"
+						strGrafica += strings.TrimRight(string(filetemp.B_content[:]), "\x00")
+						strGrafica += "</td></tr>\n"
+						strGrafica += "</table>>];\n"
+
+					}
+				}
+			}
+
+		}
+
+		inodes = Inodes()
+		aux.Seek(int64(super.S_inode_start+(int32(unsafe.Sizeof(inodes))*int32(i+1))), 0)
+		binary.Read(aux, binary.LittleEndian, &inodes)
+	}
+
+	strGrafica += "\n\n}\n"
+
+	// create and write to file
+	file, err := os.Create(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer file.Close()
+	_, err = file.WriteString(strGrafica)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// execute dot command
+	dotCmd := exec.Command("dot", "-Tpdf", fileDot, "-o", repPath)
+	err = dotCmd.Run()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//remove file
+	err = os.Remove(fileDot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	path_tree = repPath
+
+}
+
+func (usr User) FileReport(repPath string, fileDot string, binPath string, rute string, partitions Partition) {
+
+}
+
+func (usr User) return_disk() string {
+	return path_disk
+}
+
+func (usr User) return_sb() string {
+	return path_sb
+}
+
+func (usr User) return_tree() string {
+	return path_tree
+}
+
+func GetInodes(superbloque Superblock, paths string) int {
+
+	aux, _ := os.OpenFile(paths, os.O_RDWR, 0666)
+	defer aux.Close()
+	BMInode := make([]byte, superbloque.S_inodes_count)
+	aux.Seek(int64(superbloque.S_bm_inode_start), 0)
+	binary.Read(aux, binary.LittleEndian, &BMInode)
+	for i := 0; i < int(superbloque.S_inodes_count); i++ {
+		if BMInode[i] == 48 {
+			return i
+		}
+	}
+	return -1
 }

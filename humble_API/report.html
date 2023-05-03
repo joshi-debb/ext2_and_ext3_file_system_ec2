@@ -34,7 +34,7 @@
             height: 50px;
             background-color: rgb(40, 234, 18);
             position: absolute;
-            top: 10%;
+            top: 15%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
@@ -44,28 +44,11 @@
             height: 50px;
             background-color: rgb(40, 234, 18);
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-            
-        #text_area {
-            width: 300px;
-            height: 50px;
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        #text_area2 {
-            width: 300px;
-            height: 50px;
-            position: absolute;
             top: 55%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
+        
     </style>
 </head>
 <body>
@@ -74,24 +57,27 @@
 
         <div class="input-group" id="title1">
             <input type="text" class="form-control" placeholder="MIA PROYECTO 2" aria-label="Recipient's username with two button addons">
-            <button class="btn btn-outline-secondary" type="button">Volver</button>
+            <button class="btn btn-outline-secondary" type="button" onclick="back()">Volver</button>
         </div>
 
         <div class="input-group" id="fase1">
             <input type="text" class="form-control" placeholder="Fase 1" aria-label="Recipient's username with two button addons">
-            <button class="btn btn-outline-secondary" type="button">Disk</button>
+            <button class="btn btn-outline-secondary" type="button" onclick="reporte1()">Disk</button>
+        </div>
+
+        <div id="reporte_disk" style="height: 240px; width: 700px; position: absolute; top: 20%; left: 6%; image-resolution: 100%;">   
+
         </div>
 
         <div class="input-group" id="fase2">
             <input type="text" class="form-control" placeholder="Fase 2" aria-label="Recipient's username with two button addons">
-            <button class="btn btn-outline-secondary" type="button">Tree</button>
-            <button class="btn btn-outline-secondary" type="button">SuperBlock</button>
+            <button class="btn btn-outline-secondary" type="button" onclick="reporte3()">Tree</button>
+            <button class="btn btn-outline-secondary" type="button" onclick="reporte2()">SuperBlock</button>
             <button class="btn btn-outline-secondary" type="button">File</button>
 
         </div>
-        
-        <div id="text_area">
 
+        <div id="reportes" style="height: 240px; width: 700px; position: absolute; top: 60%; left: 6%; image-resolution: 100%;">   
 
         </div>
         
@@ -104,15 +90,8 @@
     
         function reporte1(){
 
-            var datas = {
-                'id': aux1.value,
-                'name': aux2.value,
-                'pass': aux3.value
-            }
-
-            fetch ('http://localhost:8080/login', {
+            fetch ('http://localhost:8080/reporte1', {
                 method: 'POST',
-                body: JSON.stringify(datas),
                 headers:{
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*',
@@ -120,16 +99,91 @@
 
             })
 
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data.cmds);
-                if (data.cmds == "Login exitoso"){
-                    window.location.href = "report.html";
+            .then(response => {
+                if (!response.ok) {
+                throw new Error('No existe el reporte');
                 }
+                return response.blob();
+            })
+            .then(blob => {
+                const ruta = URL.createObjectURL(blob);
+                const cuadrito = document.createElement('iframe');
+                cuadrito.src = ruta;
+                cuadrito.width = '100%';
+                cuadrito.height = '100%';
+                const report1 = document.getElementById('reporte_disk');
+                report1.appendChild(cuadrito);
+                URL.revokeObjectURL(ruta);
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert("Ocurrio un error, ver la consola");
+                alert("Error al generar el reporte");
+            });
+        }
+
+        function reporte2(){
+
+            fetch ('http://localhost:8080/reporte2', {
+                method: 'POST',
+                headers:{
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                }
+
+            })
+
+            .then(response => {
+                if (!response.ok) {
+                throw new Error('No existe el reporte');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const ruta = URL.createObjectURL(blob);
+                const cuadrito = document.createElement('iframe');
+                cuadrito.src = ruta;
+                cuadrito.width = '100%';
+                cuadrito.height = '100%';
+                const report1 = document.getElementById('reportes');
+                report1.appendChild(cuadrito);
+                URL.revokeObjectURL(ruta);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al generar el reporte");
+            });
+        }
+
+        function reporte3(){
+
+            fetch ('http://localhost:8080/reporte3', {
+                method: 'POST',
+                headers:{
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                }
+
+            })
+
+            .then(response => {
+                if (!response.ok) {
+                throw new Error('No existe el reporte');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const ruta = URL.createObjectURL(blob);
+                const cuadrito = document.createElement('iframe');
+                cuadrito.src = ruta;
+                cuadrito.width = '100%';
+                cuadrito.height = '100%';
+                const report1 = document.getElementById('reportes');
+                report1.appendChild(cuadrito);
+                URL.revokeObjectURL(ruta);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al generar el reporte");
             });
         }
 
