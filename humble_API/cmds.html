@@ -127,7 +127,7 @@
             var aux3 = document.getElementById("historial");
             aux3.value += aux.value + "\n";
 
-            fetch ('http://localhost:8080/cmds', {
+            fetch ('http://18.188.152.18/cmds', {
                 method: 'POST',
                 body: JSON.stringify(aux2),
                 headers:{
@@ -166,7 +166,7 @@
             var aux3 = document.getElementById("historial");
 
 
-            fetch ('http://localhost:8080/scripts', {
+            fetch ('http://18.188.152.18/scripts', {
                 method: 'POST',
                 body: reader
             })
