@@ -516,15 +516,14 @@ func (usr User) Rmusr(tks []string) string {
 
 func (usr User) CheckLogin(id string, name string, pass string) string {
 
-	if id == logeado.Id && name == logeado.User && pass != logeado.Password {
-		return "Password incorrecto"
-	} else if id != logeado.Id && name == logeado.User && pass == logeado.Password {
-		return "ID incorrecto"
-	} else if id == logeado.Id && name != logeado.User && pass == logeado.Password {
-		return "Usuario incorrecto"
+	if id == "" || name == "" || pass == "" {
+		return "Datos incorrectos"
 	}
-
-	return "Login exitoso"
+	if id == logeado.Id && name == logeado.User && pass == logeado.Password {
+		return "Login exitoso"
+	} else {
+		return "Datos incorrectos"
+	}
 }
 
 func (usr User) MakeReport(tks []string) string {

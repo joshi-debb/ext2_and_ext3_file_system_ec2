@@ -126,6 +126,8 @@
                 console.log(data.cmds)
                 if (data.cmds == "Login exitoso"){
                     window.location.href = "report.html";
+                }else{
+                    alert("Datos incorrectos");
                 }
             })
             .catch(error => {
